@@ -446,7 +446,7 @@
       <div class="stat-card" id="vol-card" style="display:none">
         <div class="stat-label">Reconstructed Volume</div>
         <div class="stat-value"><span id="vol-value">—</span><span class="stat-unit">cm³</span></div>
-        <div class="stat-note">Normal range: 300–800 cm³</div>
+        <div class="stat-note">Normal range: 600–1400 cm³</div>
       </div>
       <div id="circ-section" style="display:none">
         <div class="section-label" style="margin-bottom:6px">Per-Band Circumference</div>
@@ -484,20 +484,25 @@ const RING_POINTS = 360;
 // Angular positions of the four snap nodes, in degrees
 const SNAP_ANGLES_DEG = [0, 90, 180, 270];
 
-// Clinical demo data: 10-band tibial residual limb
-// R values are snap-node indices (multiply by MM_PER_INDEX for mm)
-// R0 (anterior) > R180 (posterior) models tibial crest prominence
+// Clinical demo data: 10-band transtibial residual limb (250mm length)
+// R values are snap-node indices; radius_mm = index × 5mm
+//
+// Proximal end (band 1, z=0): index 10-11 → radius 50-55mm → circumference ~320mm
+// Distal end  (band 10, z=250mm): index 5-6 → radius 25-30mm → circumference ~165mm
+// R0 (anterior) is 1 index larger than R180 (posterior) to model tibial crest prominence.
+// Expected reconstructed volume: ~1000-1200 cm³ (typical adult transtibial stump,
+// consistent with published literature: Darter 2017, Sanders 2011 → 600-1400 mL range).
 const DEMO_BANDS = [
-  { height_mm: 0,   r0: 19, r90: 18, r180: 18, r270: 17 },
-  { height_mm: 28,  r0: 18, r90: 17, r180: 17, r270: 16 },
-  { height_mm: 56,  r0: 17, r90: 16, r180: 16, r270: 15 },
-  { height_mm: 83,  r0: 16, r90: 15, r180: 15, r270: 14 },
-  { height_mm: 111, r0: 15, r90: 14, r180: 14, r270: 13 },
-  { height_mm: 139, r0: 13, r90: 12, r180: 13, r270: 12 },
-  { height_mm: 167, r0: 12, r90: 11, r180: 11, r270: 11 },
-  { height_mm: 194, r0: 11, r90: 10, r180: 10, r270: 10 },
-  { height_mm: 222, r0:  9, r90:  9, r180:  9, r270:  8 },
-  { height_mm: 250, r0:  8, r90:  8, r180:  8, r270:  7 },
+  { height_mm: 0,   r0: 11, r90: 10, r180: 10, r270: 10 },  // prox circ ~322mm
+  { height_mm: 28,  r0: 10, r90: 10, r180: 10, r270:  9 },
+  { height_mm: 56,  r0: 10, r90:  9, r180:  9, r270:  9 },
+  { height_mm: 83,  r0:  9, r90:  9, r180:  9, r270:  8 },
+  { height_mm: 111, r0:  9, r90:  8, r180:  8, r270:  8 },
+  { height_mm: 139, r0:  8, r90:  7, r180:  8, r270:  7 },
+  { height_mm: 167, r0:  7, r90:  7, r180:  7, r270:  6 },
+  { height_mm: 194, r0:  7, r90:  6, r180:  6, r270:  6 },
+  { height_mm: 222, r0:  6, r90:  6, r180:  6, r270:  5 },
+  { height_mm: 250, r0:  6, r90:  5, r180:  5, r270:  5 },  // dist circ ~165mm
 ];
 
 // Three.js module-level handles
@@ -1265,12 +1270,12 @@ function updateStatsPanel(metrics, bands) {
   // Mark volume as out of clinical range
   const volNote = volCard.querySelector('.stat-note');
   const cm3 = metrics.volume.cm3;
-  if (cm3 < 300 || cm3 > 800) {
+  if (cm3 < 600 || cm3 > 1400) {
     volNote.style.color = '#b45309';
-    volNote.textContent = `⚠ Outside normal range (300–800 cm³)`;
+    volNote.textContent = `⚠ Outside normal range (600–1400 cm³)`;
   } else {
     volNote.style.color = '#16a34a';
-    volNote.textContent = `✓ Within normal range (300–800 cm³)`;
+    volNote.textContent = `✓ Within normal range (600–1400 cm³)`;
   }
 
   // Circumference table
@@ -1468,8 +1473,8 @@ function exportPDF(bands, metrics) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   const cm3 = metrics.volume.cm3.toFixed(1);
-  const inRange = metrics.volume.cm3 >= 300 && metrics.volume.cm3 <= 800;
-  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 300–800 cm³)`, margin, y);
+  const inRange = metrics.volume.cm3 >= 600 && metrics.volume.cm3 <= 1400;
+  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 600–1400 cm³)`, margin, y);
 
   if (!inRange) {
     doc.setTextColor(180, 83, 9);
