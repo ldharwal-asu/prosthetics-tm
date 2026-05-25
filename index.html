@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -362,6 +363,92 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    /* ── Measurement Overlay ── */
+    .band-label-3d {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: #ffffff;
+      background: rgba(0, 102, 204, 0.8);
+      padding: 2px 6px;
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    #overlay-toggle {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+      backdrop-filter: blur(4px);
+    }
+    #overlay-toggle:hover { background: #ffffff; color: #0066CC; border-color: #0066CC; }
+    #overlay-toggle.active { background: #0066CC; color: #ffffff; border-color: #0066CC; }
+
+    #snap-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 10px;
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      backdrop-filter: blur(4px);
+    }
+
+    .legend-title {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-ring {
+      width: 10px;
+      height: 2px;
+      border-radius: 1px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid #94a3b8;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -440,6 +527,24 @@
         <p>3D Reconstruction Viewer</p>
         <span>Enter measurements and click Reconstruct</span>
       </div>
+
+      <!-- Overlay toggle button (top-right of viewer) -->
+      <button id="overlay-toggle" title="Show measurement band rings and snap nodes">&#8853; Overlay</button>
+
+      <!-- Snap node colour legend (bottom-left, shown when overlay is active) -->
+      <div id="snap-legend">
+        <div class="legend-title">Snap Nodes</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FF3333"></div>0° Anterior</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#33CC44"></div>90° Medial</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4488FF"></div>180° Posterior</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FFAA00"></div>270° Lateral</div>
+        <div class="legend-item" style="margin-top:3px;padding-top:5px;border-top:1px solid #e2e8f0">
+          <div class="legend-ring"></div>Band ring
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#0066CC;border-radius:2px"></div>Band label
+        </div>
+      </div>
     </div>
 
     <div id="stats-panel">
@@ -506,12 +611,17 @@ const DEMO_BANDS = [
 ];
 
 // Three.js module-level handles
-let renderer = null;
-let scene    = null;
-let camera   = null;
-let controls = null;
-let animId   = null;
-let meshObj  = null;   // current THREE.Mesh in scene
+let renderer      = null;
+let labelRenderer = null;   // CSS2DRenderer for band labels
+let scene         = null;
+let camera        = null;
+let controls      = null;
+let animId        = null;
+let meshObj       = null;   // current THREE.Mesh in scene
+
+// Measurement overlay state
+let overlayGroup   = null;   // THREE.Group holding rings + spheres + labels
+let overlayVisible = false;  // whether overlay is currently shown
 
 // Last successful reconstruction data (for export)
 let lastMeshData = null;
@@ -959,6 +1069,15 @@ function initThreeJS(canvasWrapper) {
   renderer.shadowMap.enabled = false;
   canvasWrapper.appendChild(renderer.domElement);
 
+  // CSS2DRenderer — renders HTML band labels anchored to 3D positions
+  labelRenderer = new THREE.CSS2DRenderer();
+  labelRenderer.setSize(canvasWrapper.clientWidth, canvasWrapper.clientHeight);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top      = '0px';
+  labelRenderer.domElement.style.left     = '0px';
+  labelRenderer.domElement.style.pointerEvents = 'none';  // don't block orbit controls
+  canvasWrapper.appendChild(labelRenderer.domElement);
+
   // Scene — light gray background (clinical)
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f4f8);
@@ -1004,6 +1123,7 @@ function initThreeJS(canvasWrapper) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    labelRenderer.setSize(w, h);
   });
   ro.observe(canvasWrapper);
 
@@ -1012,6 +1132,7 @@ function initThreeJS(canvasWrapper) {
     animId = requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);  // render HTML labels over the WebGL canvas
   }
   animate();
 }
@@ -1090,6 +1211,125 @@ function renderMesh(meshData) {
 
   // Hide placeholder, show canvas
   document.getElementById('canvas-placeholder').style.display = 'none';
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 5b: MEASUREMENT OVERLAY
+// Visualises the physical strap structure: one ring outline per band
+// (the spline cross-section), and the four coloured snap-node spheres
+// showing exactly where the device locked at 0°/90°/180°/270°.
+// ═══════════════════════════════════════════════════════════════
+
+// Colors assigned to the four angular snap positions
+const SNAP_COLORS = [0xFF3333, 0x33CC44, 0x4488FF, 0xFFAA00];
+//                  0° ant    90° med   180° post  270° lat
+
+/**
+ * Build the measurement overlay group and add it to the scene.
+ * Creates, per band:
+ *   - a white Line ring tracing the full 360-pt spline cross-section
+ *   - four coloured MeshBasicMaterial spheres at the snap node positions
+ *   - a CSS2DObject text label "B01"…"B10" anchored outside the ring
+ *
+ * Uses depthTest:false so overlay is always visible through the mesh.
+ * renderOrder 1/2 ensures rings draw over mesh, spheres draw over rings.
+ */
+function buildOverlay(rings2D, bands) {
+  clearOverlay();
+
+  overlayGroup = new THREE.Group();
+  overlayGroup.name = 'measurementOverlay';
+
+  bands.forEach((band, bi) => {
+    const z    = band.height_mm;
+    const ring = rings2D[bi];
+
+    // ── Spline ring outline ───────────────────────────────────
+    // Build a closed polyline from all 360 interpolated ring points.
+    const ringPts = ring.map(p => new THREE.Vector3(p.x, p.y, z));
+    ringPts.push(ringPts[0].clone());          // close the loop explicitly
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+    const lineMat = new THREE.LineBasicMaterial({
+      color:       0xffffff,
+      opacity:     0.7,
+      transparent: true,
+      depthTest:   false,                      // always visible through the mesh
+    });
+    const ringLine = new THREE.Line(lineGeo, lineMat);
+    ringLine.renderOrder = 1;
+    overlayGroup.add(ringLine);
+
+    // ── Snap node spheres ─────────────────────────────────────
+    // The four control points are the exact physical snap positions.
+    // Each gets a colour-coded sphere (radius 3.5mm, visible but not huge).
+    const ctrl = getControlPoints(band);       // [{x,y}] at 0°/90°/180°/270°
+    const sphereGeo = new THREE.SphereGeometry(3.5, 10, 7);
+    ctrl.forEach((pt, si) => {
+      const mat    = new THREE.MeshBasicMaterial({ color: SNAP_COLORS[si], depthTest: false });
+      const sphere = new THREE.Mesh(sphereGeo, mat);
+      sphere.position.set(pt.x, pt.y, z);
+      sphere.renderOrder = 2;
+      overlayGroup.add(sphere);
+    });
+
+    // ── Band label (CSS2DObject) ──────────────────────────────
+    // Anchored in 3D at (−maxRadius − 16mm, 0, z) so it sits just outside
+    // the leftmost extent of the ring regardless of rotation.
+    const maxR = Math.max(...ring.map(p => Math.sqrt(p.x * p.x + p.y * p.y)));
+    const div  = document.createElement('div');
+    div.className   = 'band-label-3d';
+    div.textContent = 'B' + String(bi + 1).padStart(2, '0');
+    const label = new THREE.CSS2DObject(div);
+    label.position.set(-(maxR + 16), 0, z);
+    overlayGroup.add(label);
+  });
+
+  overlayGroup.visible = overlayVisible;
+  scene.add(overlayGroup);
+}
+
+/**
+ * Remove the overlay group from the scene and free GPU resources.
+ * CSS2DObjects' DOM elements are automatically unmounted by CSS2DRenderer
+ * when their parent object leaves the scene.
+ */
+function clearOverlay() {
+  if (!overlayGroup) return;
+  overlayGroup.traverse(obj => {
+    if (obj.isMesh || obj.isLine) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    }
+  });
+  scene.remove(overlayGroup);
+  overlayGroup = null;
+}
+
+/**
+ * Toggle the overlay on/off.
+ * If no reconstruction exists yet, shows an error instead.
+ */
+function toggleOverlay() {
+  if (!lastMeshData || !lastBands) {
+    showError('Reconstruct the limb first to show the measurement overlay.');
+    return;
+  }
+
+  overlayVisible = !overlayVisible;
+
+  const btn    = document.getElementById('overlay-toggle');
+  const legend = document.getElementById('snap-legend');
+
+  btn.classList.toggle('active', overlayVisible);
+  btn.textContent = overlayVisible ? '✕ Hide Overlay' : '⊕ Overlay';
+  legend.style.display = overlayVisible ? 'flex' : 'none';
+
+  if (overlayVisible) {
+    buildOverlay(lastMeshData.rings2D, lastBands);
+  } else {
+    clearOverlay();
+  }
 }
 
 
@@ -1604,6 +1844,9 @@ function reconstruct() {
     lastMeshData = meshData;
     lastBands    = bands;
     lastMetrics  = metrics;
+
+    // Rebuild overlay if it was visible before this reconstruction
+    if (overlayVisible) buildOverlay(meshData.rings2D, bands);
   } catch (err) {
     showError('Reconstruction error: ' + err.message);
     console.error(err);
@@ -1651,6 +1894,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!lastMeshData || !lastMetrics) { showError('Reconstruct the limb first before exporting.'); return; }
     exportPDF(lastBands, lastMetrics);
   });
+
+  // ── Overlay toggle ─────────────────────────────────────────
+  document.getElementById('overlay-toggle').addEventListener('click', toggleOverlay);
 
   // ── Keyboard shortcut: Enter in any table cell triggers Reconstruct ──
   document.getElementById('band-table').addEventListener('keydown', e => {
