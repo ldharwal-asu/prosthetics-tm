@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProstheticsTM — Residual Limb Geometry Reconstruction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #ffffff;
+      color: #1a1a2e;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #app-container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ── Left Panel ── */
+    #left-panel {
+      width: 360px;
+      min-width: 360px;
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .brand-header {
+      padding: 18px 20px 14px;
+      background: #0066CC;
+      color: #ffffff;
+    }
+
+    .brand-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-header p {
+      font-size: 11px;
+      opacity: 0.85;
+      margin-top: 2px;
+      letter-spacing: 0.2px;
+    }
+
+    #left-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    /* ── Band Input Table ── */
+    #band-table-wrapper {
+      overflow-x: auto;
+    }
+
+    #band-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #band-table thead th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      font-size: 10px;
+      letter-spacing: 0.4px;
+      padding: 6px 4px;
+      text-align: center;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    #band-table thead th:first-child { text-align: left; padding-left: 6px; }
+
+    #band-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+    #band-table tbody td {
+      padding: 3px 2px;
+      text-align: center;
+    }
+
+    #band-table tbody td:first-child {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      padding-left: 6px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    #band-table input[type="number"] {
+      width: 46px;
+      padding: 4px 3px;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      font-family: 'Inter', monospace;
+      font-size: 12px;
+      text-align: center;
+      color: #1a1a2e;
+      background: #fff;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+
+    #band-table input[type="number"]::-webkit-inner-spin-button,
+    #band-table input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    #band-table input[type="number"]:focus {
+      outline: none;
+      border-color: #0066CC;
+      box-shadow: 0 0 0 2px rgba(0,102,204,0.15);
+    }
+
+    #band-table input.input-error { border-color: #ef4444; background: #fff5f5; }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: #0066CC;
+      color: #fff;
+      flex: 1;
+      justify-content: center;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    .btn-primary:hover { background: #0055aa; }
+    .btn-primary:active { background: #004499; transform: scale(0.98); }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover { background: #e2e8f0; color: #1a1a2e; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #0066CC;
+      border: 1px solid #0066CC;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .btn-ghost:hover { background: #eff6ff; }
+
+    /* ── Validation Panel ── */
+    #validation-panel {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 40px;
+    }
+
+    .warning-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+      padding: 5px 8px;
+      margin-top: 4px;
+    }
+
+    .warning-icon { font-size: 12px; }
+
+    .ok-message {
+      font-size: 11px;
+      color: #16a34a;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── Error Banner ── */
+    #error-banner {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #dc2626;
+    }
+
+    /* ── Right Panel ── */
+    #right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f8f9fa;
+    }
+
+    #canvas-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #canvas-wrapper canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    #canvas-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+    }
+
+    #canvas-placeholder .placeholder-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    #canvas-placeholder p {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    #canvas-placeholder span {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* ── Stats Panel ── */
+    #stats-panel {
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      padding: 12px 20px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .stat-card {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 16px;
+      min-width: 140px;
+    }
+
+    .stat-card .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .stat-card .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0066CC;
+      margin-top: 2px;
+    }
+
+    .stat-card .stat-unit {
+      font-size: 12px;
+      color: #64748b;
+      margin-left: 2px;
+    }
+
+    .stat-card .stat-note {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    /* ── Circumference Table in Stats ── */
+    #circ-section { flex: 1; min-width: 200px; }
+
+    #circ-table {
+      border-collapse: collapse;
+      font-size: 11px;
+      width: 100%;
+    }
+
+    #circ-table th {
+      font-size: 10px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 3px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+
+    #circ-table td {
+      padding: 3px 8px;
+      color: #334155;
+    }
+
+    #circ-table tr:nth-child(even) td { background: #f8fafc; }
+
+    .convex-ok { color: #16a34a; font-weight: 600; }
+    .convex-warn { color: #b45309; font-weight: 600; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="app-container">
+
+  <!-- ══════════════════ LEFT PANEL ══════════════════ -->
+  <div id="left-panel">
+    <div class="brand-header">
+      <h1>ProstheticsTM</h1>
+      <p>Residual Limb Geometry Reconstruction System</p>
+    </div>
+
+    <div id="left-scroll">
+
+      <!-- Band Input Table -->
+      <div>
+        <div class="section-label">Measurement Bands</div>
+        <div id="band-table-wrapper">
+          <table id="band-table">
+            <thead>
+              <tr>
+                <th>Band</th>
+                <th>H(mm)</th>
+                <th>R0°</th>
+                <th>R90°</th>
+                <th>R180°</th>
+                <th>R270°</th>
+              </tr>
+            </thead>
+            <tbody id="band-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Error Banner -->
+      <div id="error-banner"></div>
+
+      <!-- Primary Action -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-reconstruct">&#9654; Reconstruct 3D</button>
+      </div>
+
+      <!-- Secondary Actions -->
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btn-demo">Load Demo</button>
+        <button class="btn btn-secondary" id="btn-add-band">+ Band</button>
+        <button class="btn btn-secondary" id="btn-rm-band">&#8722; Band</button>
+      </div>
+
+      <!-- Export Actions -->
+      <div>
+        <div class="section-label">Export</div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-export-csv">CSV</button>
+          <button class="btn btn-ghost" id="btn-export-stl">STL</button>
+          <button class="btn btn-ghost" id="btn-export-pdf">PDF Report</button>
+        </div>
+      </div>
+
+      <!-- Convexity / Validation Warnings -->
+      <div>
+        <div class="section-label">Validation</div>
+        <div id="validation-panel">
+          <span style="font-size:11px;color:#94a3b8;">Reconstruct to see validation results.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════ RIGHT PANEL ══════════════════ -->
+  <div id="right-panel">
+    <div id="canvas-wrapper">
+      <div id="canvas-placeholder">
+        <div class="placeholder-icon">&#11060;</div>
+        <p>3D Reconstruction Viewer</p>
+        <span>Enter measurements and click Reconstruct</span>
+      </div>
+    </div>
+
+    <div id="stats-panel">
+      <div class="stat-card" id="vol-card" style="display:none">
+        <div class="stat-label">Reconstructed Volume</div>
+        <div class="stat-value"><span id="vol-value">—</span><span class="stat-unit">cm³</span></div>
+        <div class="stat-note">Normal range: 300–800 cm³</div>
+      </div>
+      <div id="circ-section" style="display:none">
+        <div class="section-label" style="margin-bottom:6px">Per-Band Circumference</div>
+        <table id="circ-table">
+          <thead>
+            <tr>
+              <th>Band</th>
+              <th>Height</th>
+              <th>Circumf.</th>
+              <th>Convex</th>
+              <th>Fit Error</th>
+            </tr>
+          </thead>
+          <tbody id="circ-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1: CONSTANTS & GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════
+
+// Snap-lock grid: each index unit = 5mm of radial distance
+const MM_PER_INDEX = 5;
+
+// Number of interpolated points around each cross-section ring
+const RING_POINTS = 360;
+
+// Angular positions of the four snap nodes, in degrees
+const SNAP_ANGLES_DEG = [0, 90, 180, 270];
+
+// Clinical demo data: 10-band tibial residual limb
+// R values are snap-node indices (multiply by MM_PER_INDEX for mm)
+// R0 (anterior) > R180 (posterior) models tibial crest prominence
+const DEMO_BANDS = [
+  { height_mm: 0,   r0: 19, r90: 18, r180: 18, r270: 17 },
+  { height_mm: 28,  r0: 18, r90: 17, r180: 17, r270: 16 },
+  { height_mm: 56,  r0: 17, r90: 16, r180: 16, r270: 15 },
+  { height_mm: 83,  r0: 16, r90: 15, r180: 15, r270: 14 },
+  { height_mm: 111, r0: 15, r90: 14, r180: 14, r270: 13 },
+  { height_mm: 139, r0: 13, r90: 12, r180: 13, r270: 12 },
+  { height_mm: 167, r0: 12, r90: 11, r180: 11, r270: 11 },
+  { height_mm: 194, r0: 11, r90: 10, r180: 10, r270: 10 },
+  { height_mm: 222, r0:  9, r90:  9, r180:  9, r270:  8 },
+  { height_mm: 250, r0:  8, r90:  8, r180:  8, r270:  7 },
+];
+
+// Three.js module-level handles
+let renderer = null;
+let scene    = null;
+let camera   = null;
+let controls = null;
+let animId   = null;
+let meshObj  = null;   // current THREE.Mesh in scene
+
+// Last successful reconstruction data (for export)
+let lastMeshData = null;
+let lastBands    = null;
+let lastMetrics  = null;
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 2: INPUT TABLE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Initialise the band input table with n empty rows.
+ * Each row: Band index (display), Height(mm), R0°, R90°, R180°, R270°
+ */
+function initInputTable(n) {
+  const tbody = document.getElementById('band-body');
+  tbody.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    tbody.appendChild(makeBandRow(i + 1));
+  }
+}
+
+function makeBandRow(bandNum) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>B${String(bandNum).padStart(2,'0')}</td>
+    <td><input type="number" class="h-input" min="0" max="999" step="1" placeholder="0"></td>
+    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
+    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
+    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
+    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
+  `;
+  return tr;
+}
+
+function addBand() {
+  const tbody = document.getElementById('band-body');
+  if (tbody.rows.length >= 12) { showError('Maximum 12 bands allowed.'); return; }
+  tbody.appendChild(makeBandRow(tbody.rows.length + 1));
+  renumberRows();
+}
+
+function removeBand() {
+  const tbody = document.getElementById('band-body');
+  if (tbody.rows.length <= 8) { showError('Minimum 8 bands required.'); return; }
+  tbody.removeChild(tbody.lastChild);
+}
+
+function renumberRows() {
+  const rows = document.getElementById('band-body').rows;
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].cells[0].textContent = 'B' + String(i + 1).padStart(2, '0');
+  }
+}
+
+/**
+ * Load demo data into the table.
+ * Uses DEMO_BANDS which model a 250mm tibial residual limb.
+ */
+function loadDemoData() {
+  initInputTable(DEMO_BANDS.length);
+  const rows = document.getElementById('band-body').rows;
+  DEMO_BANDS.forEach((b, i) => {
+    const inputs = rows[i].querySelectorAll('input');
+    inputs[0].value = b.height_mm;
+    inputs[1].value = b.r0;
+    inputs[2].value = b.r90;
+    inputs[3].value = b.r180;
+    inputs[4].value = b.r270;
+  });
+  hideError();
+}
+
+/**
+ * Read and validate the entire input table.
+ * Returns array of band objects, or null on validation failure.
+ */
+function readInputTable() {
+  const rows = document.getElementById('band-body').rows;
+  const bands = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const inputs = rows[i].querySelectorAll('input');
+    // Clear previous error highlighting on this row
+    inputs.forEach(inp => inp.classList.remove('input-error'));
+
+    const h    = parseFloat(inputs[0].value);
+    const r0   = parseInt(inputs[1].value, 10);
+    const r90  = parseInt(inputs[2].value, 10);
+    const r180 = parseInt(inputs[3].value, 10);
+    const r270 = parseInt(inputs[4].value, 10);
+
+    let rowValid = true;
+
+    // Validate height
+    if (isNaN(h) || h < 0) {
+      inputs[0].classList.add('input-error');
+      rowValid = false;
+    }
+
+    // Validate radial indices (minimum 1 = 5mm to avoid degenerate geometry)
+    [r0, r90, r180, r270].forEach((r, j) => {
+      if (isNaN(r) || r < 1) {
+        inputs[j + 1].classList.add('input-error');
+        rowValid = false;
+      }
+    });
+
+    if (!rowValid) {
+      showError(`Band ${i + 1}: all values must be numeric. R values ≥ 1 (= 5mm), height ≥ 0.`);
+      return null;
+    }
+
+    bands.push({ height_mm: h, r0, r90, r180, r270 });
+  }
+
+  // Enforce strictly increasing heights
+  for (let i = 1; i < bands.length; i++) {
+    if (bands[i].height_mm <= bands[i - 1].height_mm) {
+      showError(`Height at band ${i + 1} (${bands[i].height_mm}mm) must be greater than band ${i} (${bands[i-1].height_mm}mm).`);
+      return null;
+    }
+  }
+
+  return bands;
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 3: CORE MATHEMATICS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Convert polar coordinates to Cartesian.
+ * r_mm: radial distance in millimetres
+ * theta_deg: angle in degrees (0° = +X axis, 90° = +Y axis)
+ * Returns { x, y } in mm.
+ */
+function polarToCartesian(r_mm, theta_deg) {
+  const theta = theta_deg * Math.PI / 180;  // convert to radians
+  return {
+    x: r_mm * Math.cos(theta),
+    y: r_mm * Math.sin(theta),
+  };
+}
+
+/**
+ * Convert one measurement band's snap-node indices into 4 Cartesian control points.
+ * The four nodes are at 0°, 90°, 180°, 270°.
+ * Returns array of 4 { x, y } objects (in mm).
+ */
+function getControlPoints(band) {
+  const radii_mm = [band.r0, band.r90, band.r180, band.r270].map(idx => idx * MM_PER_INDEX);
+  return SNAP_ANGLES_DEG.map((theta, i) => polarToCartesian(radii_mm[i], theta));
+}
+
+/**
+ * Evaluate one segment of a uniform Catmull-Rom spline.
+ *
+ * The uniform (alpha=0) Catmull-Rom basis matrix applied to control points
+ * [p0, p1, p2, p3] produces a cubic curve through p1→p2:
+ *
+ *   q(t) = 0.5 × [ (2·P1)
+ *                + (-P0 + P2)·t
+ *                + (2·P0 - 5·P1 + 4·P2 - P3)·t²
+ *                + (-P0 + 3·P1 - 3·P2 + P3)·t³ ]
+ *
+ * p0..p3: { x, y } — tangent anchors and curve endpoints
+ * nPts: number of samples, at t = 0, 1/nPts, 2/nPts … (nPts-1)/nPts
+ *       (t=1 is intentionally excluded to prevent duplication at segment joins)
+ * Returns array of nPts { x, y } points.
+ */
+function catmullRomSegment(p0, p1, p2, p3, nPts) {
+  const pts = [];
+  for (let j = 0; j < nPts; j++) {
+    const t  = j / nPts;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    // Catmull-Rom basis coefficients
+    const c0 =  -t3 + 2*t2 - t;         // weight for p0
+    const c1 =   3*t3 - 5*t2 + 2;       // weight for p1  (×2 cancels the 0.5)
+    const c2 =  -3*t3 + 4*t2 + t;       // weight for p2
+    const c3 =   t3 - t2;               // weight for p3
+
+    // Each coordinate is computed independently
+    pts.push({
+      x: 0.5 * (c0*p0.x + c1*p1.x + c2*p2.x + c3*p3.x),
+      y: 0.5 * (c0*p0.y + c1*p1.y + c2*p2.y + c3*p3.y),
+    });
+  }
+  return pts;
+}
+
+/**
+ * Build a smooth closed ring through exactly 4 control points using
+ * Catmull-Rom splines. Produces totalPoints evenly distributed samples.
+ *
+ * For a closed curve of N points, the ghost/phantom point construction is:
+ *   Segment s: uses [P[(s-1+N)%N], P[s], P[(s+1)%N], P[(s+2)%N]]
+ *
+ * With N=4 segments and totalPoints=360:
+ *   - Each segment contributes 90 samples (360/4 = 90)
+ *   - t runs from 0/90 to 89/90, never reaching 1.0
+ *   - The curve closes perfectly: segment 3's implicit t=1 equals segment 0's t=0
+ *
+ * Returns array of totalPoints { x, y }.
+ */
+function catmullRomClosedSpline(ctrl, totalPoints) {
+  const N    = ctrl.length;         // should be 4
+  const pps  = totalPoints / N;     // points per segment (90 for N=4, total=360)
+  const ring = [];
+
+  for (let s = 0; s < N; s++) {
+    // Ghost points for closed-curve continuity
+    const p0 = ctrl[(s - 1 + N) % N];   // point before segment start
+    const p1 = ctrl[s];                  // segment start (curve passes through this)
+    const p2 = ctrl[(s + 1) % N];        // segment end (curve passes through this)
+    const p3 = ctrl[(s + 2) % N];        // point after segment end
+
+    const segPts = catmullRomSegment(p0, p1, p2, p3, pps);
+    ring.push(...segPts);
+  }
+
+  return ring;  // length = totalPoints
+}
+
+/**
+ * Build the 360-point cross-section ring for a single measurement band.
+ * Converts snap indices → mm, generates 4 Cartesian control points,
+ * then runs the closed Catmull-Rom spline.
+ * Returns array of 360 { x, y } in mm.
+ */
+function buildCrossSection(band) {
+  const ctrl = getControlPoints(band);
+  return catmullRomClosedSpline(ctrl, RING_POINTS);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 4: 3D MESH GENERATION
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Generate the full 3D triangle mesh from all measurement bands.
+ *
+ * Steps:
+ *   1. Build one 360-point cross-section ring per band
+ *   2. Tag each ring point with z = band.height_mm
+ *   3. Connect adjacent rings with triangle strips (lofted surface)
+ *   4. Add end-cap fans (required for watertight mesh / correct volume)
+ *   5. Compute per-vertex averaged face normals for smooth shading
+ *   6. Compute per-vertex radius for HSL colormap
+ *
+ * Returns:
+ *   {
+ *     vertices: Float32Array,   // [x0,y0,z0, x1,y1,z1, ...]
+ *     indices:  Uint32Array,    // triangle indices
+ *     normals:  Float32Array,   // per-vertex normals
+ *     radii:    Float32Array,   // per-vertex sqrt(x²+y²) for colormap
+ *     rings2D:  Array<Array<{x,y}>>,   // for metrics (no z)
+ *     rings3D:  Array<Array<{x,y,z}>>, // for CSV export
+ *   }
+ */
+function generateMesh(bands) {
+  // ── Step 1 & 2: Build 3D rings ──────────────────────────────
+  const rings2D = bands.map(b => buildCrossSection(b));
+  const rings3D = rings2D.map((ring, bi) =>
+    ring.map(p => ({ x: p.x, y: p.y, z: bands[bi].height_mm }))
+  );
+
+  // ── Step 3: Accumulate vertices and triangles ────────────────
+  const vertArr = [];   // flat [x,y,z, ...] — pushed in triplets
+  const idxArr  = [];   // triangle indices
+
+  // Helper: push a vertex and return its index
+  function addVertex(x, y, z) {
+    const i = vertArr.length / 3;
+    vertArr.push(x, y, z);
+    return i;
+  }
+
+  // Map from band × ring-point to vertex index
+  // ringVtxIdx[bandIdx][ringPtIdx] = vertex index
+  const ringVtxIdx = rings3D.map(ring =>
+    ring.map(p => addVertex(p.x, p.y, p.z))
+  );
+
+  // ── Step 3a: Triangle strips between adjacent rings ──────────
+  // For each pair of adjacent bands, connect with 360 quads.
+  // Each quad is split into 2 triangles with outward-facing CCW winding.
+  //
+  // ringA = lower band (smaller z), ringB = upper band (larger z)
+  // For point index i around the ring:
+  //   tri1: [A[i], A[i+1], B[i]]      — bottom-left, bottom-right, top-left
+  //   tri2: [A[i+1], B[i+1], B[i]]    — bottom-right, top-right, top-left
+  //
+  // This winding ensures the normal points radially outward.
+  for (let bi = 0; bi < bands.length - 1; bi++) {
+    const vtxA = ringVtxIdx[bi];
+    const vtxB = ringVtxIdx[bi + 1];
+    for (let pi = 0; pi < RING_POINTS; pi++) {
+      const next = (pi + 1) % RING_POINTS;
+      // Triangle 1
+      idxArr.push(vtxA[pi], vtxA[next], vtxB[pi]);
+      // Triangle 2
+      idxArr.push(vtxA[next], vtxB[next], vtxB[pi]);
+    }
+  }
+
+  // ── Step 4: End-cap fans (for watertight mesh) ───────────────
+  // Bottom cap: fan from centroid of ring 0, normal faces –Z
+  // Top cap:    fan from centroid of last ring, normal faces +Z
+  //
+  // Centroid of a ring = mean of all 360 points
+  function ringCentroid(ring3D) {
+    let sx = 0, sy = 0, sz = 0;
+    ring3D.forEach(p => { sx += p.x; sy += p.y; sz += p.z; });
+    const n = ring3D.length;
+    return { x: sx/n, y: sy/n, z: sz/n };
+  }
+
+  // Bottom cap (ring 0, normal in –Z direction → CW winding when viewed from –Z)
+  {
+    const ring     = rings3D[0];
+    const centroid = ringCentroid(ring);
+    const centerIdx = addVertex(centroid.x, centroid.y, centroid.z);
+    const vtx = ringVtxIdx[0];
+    for (let pi = 0; pi < RING_POINTS; pi++) {
+      const next = (pi + 1) % RING_POINTS;
+      // Winding: center, next, current → normal faces –Z
+      idxArr.push(centerIdx, vtx[next], vtx[pi]);
+    }
+  }
+
+  // Top cap (last ring, normal in +Z direction)
+  {
+    const lastBi   = bands.length - 1;
+    const ring     = rings3D[lastBi];
+    const centroid = ringCentroid(ring);
+    const centerIdx = addVertex(centroid.x, centroid.y, centroid.z);
+    const vtx = ringVtxIdx[lastBi];
+    for (let pi = 0; pi < RING_POINTS; pi++) {
+      const next = (pi + 1) % RING_POINTS;
+      // Winding: center, current, next → normal faces +Z
+      idxArr.push(centerIdx, vtx[pi], vtx[next]);
+    }
+  }
+
+  // Convert to typed arrays
+  const vertices = new Float32Array(vertArr);
+  const indices  = new Uint32Array(idxArr);
+
+  // ── Step 5: Compute per-vertex normals (averaged face normals) ──
+  const normals = computeNormals(vertices, indices);
+
+  // ── Step 6: Per-vertex radius for colormap ───────────────────
+  const nVerts = vertices.length / 3;
+  const radii  = new Float32Array(nVerts);
+  for (let i = 0; i < nVerts; i++) {
+    const x = vertices[i * 3];
+    const y = vertices[i * 3 + 1];
+    radii[i] = Math.sqrt(x * x + y * y);  // radial distance from limb axis
+  }
+
+  return { vertices, indices, normals, radii, rings2D, rings3D };
+}
+
+/**
+ * Compute per-vertex normals by averaging the face normals of all
+ * triangles that share each vertex.
+ *
+ * For each triangle [v0, v1, v2]:
+ *   face_normal = normalize( (v1-v0) × (v2-v0) )
+ *   Accumulate into normal bucket for v0, v1, v2
+ * Then normalize each vertex's accumulated normal.
+ */
+function computeNormals(vertices, indices) {
+  const nVerts  = vertices.length / 3;
+  const normals = new Float32Array(nVerts * 3);  // zero-initialised
+
+  for (let ti = 0; ti < indices.length; ti += 3) {
+    const i0 = indices[ti],   i1 = indices[ti+1], i2 = indices[ti+2];
+    const ax = vertices[i0*3],   ay = vertices[i0*3+1], az = vertices[i0*3+2];
+    const bx = vertices[i1*3],   by = vertices[i1*3+1], bz = vertices[i1*3+2];
+    const cx = vertices[i2*3],   cy = vertices[i2*3+1], cz = vertices[i2*3+2];
+
+    // Edge vectors
+    const ex = bx - ax, ey = by - ay, ez = bz - az;  // v1 - v0
+    const fx = cx - ax, fy = cy - ay, fz = cz - az;  // v2 - v0
+
+    // Cross product (face normal, not yet normalised)
+    const nx = ey*fz - ez*fy;
+    const ny = ez*fx - ex*fz;
+    const nz = ex*fy - ey*fx;
+
+    // Accumulate into each vertex's normal bucket
+    for (const vi of [i0, i1, i2]) {
+      normals[vi*3]   += nx;
+      normals[vi*3+1] += ny;
+      normals[vi*3+2] += nz;
+    }
+  }
+
+  // Normalize each accumulated normal vector
+  for (let vi = 0; vi < nVerts; vi++) {
+    const nx = normals[vi*3], ny = normals[vi*3+1], nz = normals[vi*3+2];
+    const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+    if (len > 0) {
+      normals[vi*3]   = nx / len;
+      normals[vi*3+1] = ny / len;
+      normals[vi*3+2] = nz / len;
+    }
+  }
+
+  return normals;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 5: THREE.JS RENDERING
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Initialise the Three.js WebGL renderer, scene, camera, lights, and controls.
+ * Called once. The renderer's canvas is appended to canvasWrapper.
+ */
+function initThreeJS(canvasWrapper) {
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(canvasWrapper.clientWidth, canvasWrapper.clientHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = false;
+  canvasWrapper.appendChild(renderer.domElement);
+
+  // Scene — light gray background (clinical)
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf0f4f8);
+
+  // Camera
+  camera = new THREE.PerspectiveCamera(
+    45,
+    canvasWrapper.clientWidth / canvasWrapper.clientHeight,
+    0.1,
+    10000
+  );
+  camera.position.set(0, -400, 200);
+  camera.up.set(0, 0, 1);  // Z is the axial (height) axis of the limb
+
+  // OrbitControls
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping    = true;
+  controls.dampingFactor    = 0.06;
+  controls.screenSpacePanning = false;
+  controls.minDistance      = 50;
+  controls.maxDistance      = 2000;
+
+  // Lights
+  const ambient  = new THREE.AmbientLight(0xffffff, 0.45);
+  scene.add(ambient);
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+  keyLight.position.set(200, -300, 400);
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+  fillLight.position.set(-200, 200, -200);
+  scene.add(fillLight);
+
+  const rimLight  = new THREE.DirectionalLight(0xaaccff, 0.2);
+  rimLight.position.set(0, 400, -300);
+  scene.add(rimLight);
+
+  // Responsive canvas via ResizeObserver
+  const ro = new ResizeObserver(() => {
+    const w = canvasWrapper.clientWidth;
+    const h = canvasWrapper.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+  ro.observe(canvasWrapper);
+
+  // Animation loop
+  function animate() {
+    animId = requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+/**
+ * Map a radial distance to an HSL color for the limb surface.
+ * blue (hue=0.667, 240°) at minimum radius → red (hue=0.0, 0°) at maximum.
+ * This is the clinical convention: narrow = blue, wide = red.
+ */
+function radiusToColor(r, rMin, rMax) {
+  const t   = rMax > rMin ? (r - rMin) / (rMax - rMin) : 0.5;
+  const hue = (1 - t) * 0.667;   // 0.667 = 240/360 (blue at t=0, red at t=1)
+  const col = new THREE.Color();
+  col.setHSL(hue, 0.75, 0.55);
+  return col;
+}
+
+/**
+ * Create (or replace) the 3D mesh in the scene from generateMesh() output.
+ * Builds a BufferGeometry with per-vertex colors derived from local radius.
+ */
+function renderMesh(meshData) {
+  // Dispose old mesh to free GPU memory
+  if (meshObj) {
+    meshObj.geometry.dispose();
+    meshObj.material.dispose();
+    scene.remove(meshObj);
+    meshObj = null;
+  }
+
+  const { vertices, indices, normals, radii } = meshData;
+
+  // Compute radius range for colormap normalisation
+  let rMin = Infinity, rMax = -Infinity;
+  for (let i = 0; i < radii.length; i++) {
+    if (radii[i] < rMin) rMin = radii[i];
+    if (radii[i] > rMax) rMax = radii[i];
+  }
+
+  // Build per-vertex color array
+  const colors = new Float32Array(vertices.length);  // 3 floats per vertex
+  const nVerts = vertices.length / 3;
+  for (let i = 0; i < nVerts; i++) {
+    const col = radiusToColor(radii[i], rMin, rMax);
+    colors[i*3]   = col.r;
+    colors[i*3+1] = col.g;
+    colors[i*3+2] = col.b;
+  }
+
+  // Assemble BufferGeometry
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  geometry.setAttribute('normal',   new THREE.BufferAttribute(normals,  3));
+  geometry.setAttribute('color',    new THREE.BufferAttribute(colors,   3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+  const material = new THREE.MeshPhongMaterial({
+    vertexColors: true,
+    shininess:    55,
+    side:         THREE.DoubleSide,   // see inside the socket cavity
+    specular:     new THREE.Color(0x444444),
+  });
+
+  meshObj = new THREE.Mesh(geometry, material);
+  scene.add(meshObj);
+
+  // Fit camera to the new mesh's bounding sphere
+  geometry.computeBoundingSphere();
+  const { center, radius } = geometry.boundingSphere;
+  controls.target.copy(center);
+  camera.position.set(center.x, center.y - radius * 2.8, center.z + radius * 0.5);
+  camera.near = radius * 0.01;
+  camera.far  = radius * 20;
+  camera.updateProjectionMatrix();
+  controls.update();
+
+  // Hide placeholder, show canvas
+  document.getElementById('canvas-placeholder').style.display = 'none';
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 6: VALIDATION & METRICS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Compute the volume of a closed polyhedron using the divergence theorem.
+ *
+ * For each triangle [v0, v1, v2] (as position vectors from origin):
+ *   contribution = v0 · (v1 × v2) / 6
+ * Total volume = |Σ contributions|
+ *
+ * This is mathematically equivalent to the formula used in medical imaging
+ * software (e.g., 3D Slicer, Mimics) for mesh volume computation.
+ * Requires a watertight (closed) mesh — end caps must be present.
+ *
+ * Returns { mm3, cm3 }.
+ */
+function computeVolume(vertices, indices) {
+  let vol = 0;
+
+  for (let ti = 0; ti < indices.length; ti += 3) {
+    const i0 = indices[ti],   i1 = indices[ti+1], i2 = indices[ti+2];
+
+    const x0 = vertices[i0*3],   y0 = vertices[i0*3+1], z0 = vertices[i0*3+2];
+    const x1 = vertices[i1*3],   y1 = vertices[i1*3+1], z1 = vertices[i1*3+2];
+    const x2 = vertices[i2*3],   y2 = vertices[i2*3+1], z2 = vertices[i2*3+2];
+
+    // Cross product: v1 × v2
+    const cx = y1*z2 - z1*y2;
+    const cy = z1*x2 - x1*z2;
+    const cz = x1*y2 - y1*x2;
+
+    // Dot product: v0 · (v1 × v2)
+    vol += x0*cx + y0*cy + z0*cz;
+  }
+
+  const mm3 = Math.abs(vol) / 6;
+  return { mm3, cm3: mm3 / 1000 };  // 1 cm³ = 1000 mm³
+}
+
+/**
+ * Compute the circumference of a cross-section ring by integrating arc length.
+ * With 360 interpolated points, summing chord lengths is an accurate approximation
+ * of the true arc length integral ∫|dr/dθ| dθ (error < 0.01% for smooth curves).
+ *
+ * ring2D: array of 360 { x, y } (closed — last point connects back to first)
+ * Returns circumference in mm.
+ */
+function computeCircumference(ring2D) {
+  let circ = 0;
+  const n  = ring2D.length;
+  for (let i = 0; i < n; i++) {
+    const a = ring2D[i];
+    const b = ring2D[(i + 1) % n];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    circ += Math.sqrt(dx*dx + dy*dy);  // Euclidean chord length
+  }
+  return circ;
+}
+
+/**
+ * Check whether a 2D cross-section ring is convex.
+ *
+ * A polygon is convex if all cross-products of consecutive edge pairs have
+ * the same sign (all left-turns or all right-turns).
+ *
+ * For consecutive edges e_i = p[i+1]-p[i] and e_{i+1} = p[i+2]-p[i+1]:
+ *   cross_z = e_i.x × e_{i+1}.y − e_i.y × e_{i+1}.x
+ *
+ * All cross_z > 0 → CCW convex (expected for outward-wound limb cross-sections)
+ * Mixed signs → concave / self-intersecting → measurement error
+ *
+ * Returns { isConvex, failCount }.
+ */
+function checkConvexity(ring2D) {
+  const n    = ring2D.length;
+  let sign   = 0;
+  let fails  = 0;
+
+  for (let i = 0; i < n; i++) {
+    const a = ring2D[i];
+    const b = ring2D[(i + 1) % n];
+    const c = ring2D[(i + 2) % n];
+
+    // Edge vectors
+    const ex1 = b.x - a.x, ey1 = b.y - a.y;
+    const ex2 = c.x - b.x, ey2 = c.y - b.y;
+
+    // Z-component of the cross product (positive = CCW turn)
+    const cross = ex1 * ey2 - ey1 * ex2;
+
+    if (Math.abs(cross) < 1e-9) continue;  // collinear — skip
+
+    const curSign = cross > 0 ? 1 : -1;
+    if (sign === 0) {
+      sign = curSign;
+    } else if (curSign !== sign) {
+      fails++;
+    }
+  }
+
+  return { isConvex: fails === 0, failCount: fails };
+}
+
+/**
+ * Compute how well the Catmull-Rom spline fits the 4 input control points.
+ *
+ * Since Catmull-Rom is an interpolating spline (passes exactly through all
+ * control points), the residual should be ~0 to floating-point precision.
+ * Any non-zero error here indicates a bug in the spline implementation.
+ *
+ * For each snap angle (0°, 90°, 180°, 270°), find the ring point whose
+ * angle is nearest to the target, then compare its radius to the expected r_mm.
+ *
+ * Returns { maxError_mm, errors: [e0, e90, e180, e270] }.
+ */
+function computeResidualError(ring2D, band) {
+  const expectedR = [band.r0, band.r90, band.r180, band.r270].map(idx => idx * MM_PER_INDEX);
+  const errors = SNAP_ANGLES_DEG.map((theta, i) => {
+    const targetRad = theta * Math.PI / 180;
+
+    // Find the ring point with angle closest to target
+    let bestDist = Infinity;
+    let bestR    = 0;
+    ring2D.forEach(p => {
+      const pAngle = Math.atan2(p.y, p.x);
+      // Angular distance (handle wrap-around)
+      let dAngle = Math.abs(pAngle - targetRad);
+      if (dAngle > Math.PI) dAngle = 2 * Math.PI - dAngle;
+      if (dAngle < bestDist) {
+        bestDist = dAngle;
+        bestR    = Math.sqrt(p.x*p.x + p.y*p.y);
+      }
+    });
+
+    return Math.abs(bestR - expectedR[i]);
+  });
+
+  return {
+    maxError_mm: Math.max(...errors),
+    errors,
+  };
+}
+
+/**
+ * Run all validation metrics and update the stats panel DOM.
+ */
+function runAllMetrics(meshData, bands) {
+  const { vertices, indices, rings2D } = meshData;
+
+  // Volume (requires watertight mesh — end caps already added in generateMesh)
+  const volume = computeVolume(vertices, indices);
+
+  // Per-band metrics
+  const circumferences = rings2D.map(ring => computeCircumference(ring));
+  const convexity      = rings2D.map(ring => checkConvexity(ring));
+  const residuals      = rings2D.map((ring, i) => computeResidualError(ring, bands[i]));
+
+  const metrics = { volume, circumferences, convexity, residuals };
+
+  // Update DOM
+  updateStatsPanel(metrics, bands);
+  updateValidationPanel(convexity, bands);
+
+  return metrics;
+}
+
+function updateStatsPanel(metrics, bands) {
+  // Volume card
+  const volCard = document.getElementById('vol-card');
+  volCard.style.display = 'block';
+  document.getElementById('vol-value').textContent = metrics.volume.cm3.toFixed(1);
+
+  // Mark volume as out of clinical range
+  const volNote = volCard.querySelector('.stat-note');
+  const cm3 = metrics.volume.cm3;
+  if (cm3 < 300 || cm3 > 800) {
+    volNote.style.color = '#b45309';
+    volNote.textContent = `⚠ Outside normal range (300–800 cm³)`;
+  } else {
+    volNote.style.color = '#16a34a';
+    volNote.textContent = `✓ Within normal range (300–800 cm³)`;
+  }
+
+  // Circumference table
+  const circSection = document.getElementById('circ-section');
+  circSection.style.display = 'block';
+  const tbody = document.getElementById('circ-body');
+  tbody.innerHTML = '';
+
+  bands.forEach((b, i) => {
+    const circ   = metrics.circumferences[i].toFixed(1);
+    const cvx    = metrics.convexity[i];
+    const maxErr = metrics.residuals[i].maxError_mm;
+    const tr     = document.createElement('tr');
+    tr.innerHTML = `
+      <td>B${String(i+1).padStart(2,'0')}</td>
+      <td>${b.height_mm} mm</td>
+      <td>${circ} mm</td>
+      <td class="${cvx.isConvex ? 'convex-ok' : 'convex-warn'}">${cvx.isConvex ? '✓' : `✗ (${cvx.failCount})`}</td>
+      <td>${maxErr < 0.1 ? '~0' : maxErr.toFixed(2)} mm</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateValidationPanel(convexity, bands) {
+  const panel    = document.getElementById('validation-panel');
+  const warnings = convexity.map((c, i) => ({ ...c, band: i + 1, height: bands[i].height_mm }))
+                             .filter(c => !c.isConvex);
+
+  if (warnings.length === 0) {
+    panel.innerHTML = '<span class="ok-message">✓ All cross-sections are convex — no measurement errors detected.</span>';
+  } else {
+    panel.innerHTML = warnings.map(w =>
+      `<div class="warning-item">
+         <span class="warning-icon">⚠</span>
+         Band ${w.band} (${w.height}mm): non-convex cross-section — possible measurement error (${w.failCount} inflection${w.failCount > 1 ? 's' : ''})
+       </div>`
+    ).join('');
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 7: EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Trigger a browser download of a Blob.
+ * Uses the DOM anchor trick that works across Chrome, Firefox, and Safari.
+ */
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);   // required for Safari
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Export the full 3D point cloud as a CSV file.
+ * Format: x,y,z header row + one row per point (360 points × n bands).
+ * Coordinates are in millimetres.
+ */
+function exportCSV(rings3D) {
+  const lines = ['x,y,z'];
+  rings3D.forEach(ring => {
+    ring.forEach(p => {
+      lines.push(`${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`);
+    });
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  triggerDownload(blob, 'limb_reconstruction.csv');
+}
+
+/**
+ * Export the triangle mesh as a binary STL file.
+ *
+ * Binary STL format (little-endian):
+ *   Bytes 0–79:   80-byte ASCII header
+ *   Bytes 80–83:  Uint32 triangle count
+ *   Per triangle (50 bytes each):
+ *     +0  Float32×3  face normal (nx, ny, nz)
+ *     +12 Float32×3  vertex 0 (x, y, z)
+ *     +24 Float32×3  vertex 1 (x, y, z)
+ *     +36 Float32×3  vertex 2 (x, y, z)
+ *     +48 Uint16     attribute byte count = 0
+ *
+ * Uses per-triangle face normals (not averaged vertex normals) as required by
+ * the STL specification. This ensures correct import into Fusion 360 / SolidWorks.
+ *
+ * Coordinates are in millimetres (Fusion 360 auto-detects mm from file scale).
+ */
+function exportSTL(vertices, indices) {
+  const nTri   = indices.length / 3;
+  const buffer = new ArrayBuffer(80 + 4 + nTri * 50);
+  const dv     = new DataView(buffer);
+
+  // Header: ASCII text, zero-padded to 80 bytes
+  const headerStr = 'ProstheticsTM Residual Limb Reconstruction — Binary STL';
+  for (let i = 0; i < 80; i++) {
+    dv.setUint8(i, i < headerStr.length ? headerStr.charCodeAt(i) : 0);
+  }
+
+  // Triangle count (Uint32, little-endian)
+  dv.setUint32(80, nTri, true);
+
+  let offset = 84;
+
+  for (let ti = 0; ti < nTri; ti++) {
+    const i0 = indices[ti*3],   i1 = indices[ti*3+1], i2 = indices[ti*3+2];
+
+    const x0 = vertices[i0*3],   y0 = vertices[i0*3+1], z0 = vertices[i0*3+2];
+    const x1 = vertices[i1*3],   y1 = vertices[i1*3+1], z1 = vertices[i1*3+2];
+    const x2 = vertices[i2*3],   y2 = vertices[i2*3+1], z2 = vertices[i2*3+2];
+
+    // Compute per-triangle face normal: (v1-v0) × (v2-v0)
+    const ex = x1-x0, ey = y1-y0, ez = z1-z0;
+    const fx = x2-x0, fy = y2-y0, fz = z2-z0;
+    let nx = ey*fz - ez*fy;
+    let ny = ez*fx - ex*fz;
+    let nz = ex*fy - ey*fx;
+    const nlen = Math.sqrt(nx*nx + ny*ny + nz*nz);
+    if (nlen > 0) { nx /= nlen; ny /= nlen; nz /= nlen; }
+
+    // Write normal (Float32, little-endian)
+    dv.setFloat32(offset,    nx, true);
+    dv.setFloat32(offset+4,  ny, true);
+    dv.setFloat32(offset+8,  nz, true);
+
+    // Write vertices (Float32, little-endian)
+    dv.setFloat32(offset+12, x0, true);
+    dv.setFloat32(offset+16, y0, true);
+    dv.setFloat32(offset+20, z0, true);
+
+    dv.setFloat32(offset+24, x1, true);
+    dv.setFloat32(offset+28, y1, true);
+    dv.setFloat32(offset+32, z1, true);
+
+    dv.setFloat32(offset+36, x2, true);
+    dv.setFloat32(offset+40, y2, true);
+    dv.setFloat32(offset+44, z2, true);
+
+    // Attribute byte count = 0
+    dv.setUint16(offset+48, 0, true);
+
+    offset += 50;
+  }
+
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  triggerDownload(blob, 'limb_reconstruction.stl');
+}
+
+/**
+ * Export a clinical PDF report using jsPDF.
+ * Includes: company header, date, band-by-band measurement table,
+ * per-band circumference, volume, and convexity status.
+ */
+function exportPDF(bands, metrics) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = 210;
+  const margin = 18;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  // ── Header ──────────────────────────────────────────────────
+  doc.setFillColor(0, 102, 204);
+  doc.rect(0, 0, pageW, 28, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ProstheticsTM', margin, 12);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Residual Limb Geometry Reconstruction Report', margin, 20);
+
+  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  doc.text(`Generated: ${dateStr}`, pageW - margin, 20, { align: 'right' });
+
+  y = 38;
+
+  // ── Volume Summary ───────────────────────────────────────────
+  doc.setTextColor(26, 26, 46);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Clinical Summary', margin, y);
+  y += 7;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const cm3 = metrics.volume.cm3.toFixed(1);
+  const inRange = metrics.volume.cm3 >= 300 && metrics.volume.cm3 <= 800;
+  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 300–800 cm³)`, margin, y);
+
+  if (!inRange) {
+    doc.setTextColor(180, 83, 9);
+    doc.text('⚠ Volume outside normal clinical range', margin + contentW - 60, y);
+    doc.setTextColor(26, 26, 46);
+  } else {
+    doc.setTextColor(22, 163, 74);
+    doc.text('✓ Within normal range', margin + contentW - 45, y);
+    doc.setTextColor(26, 26, 46);
+  }
+
+  y += 5;
+  doc.text(`Algorithm: Catmull-Rom closed spline (360 pts/cross-section), lofted triangle mesh, divergence theorem volume`, margin, y);
+  y += 10;
+
+  // ── Band Measurement Table ────────────────────────────────────
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Band-by-Band Measurements', margin, y);
+  y += 6;
+
+  // Table headers
+  const colX = [margin, margin+14, margin+30, margin+48, margin+64, margin+80, margin+100, margin+122, margin+145, margin+162];
+  const headers = ['Band', 'H(mm)', 'R0°', 'R90°', 'R180°', 'R270°', 'Circumf.', 'Convex', 'Vol.Err'];
+
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, y - 4, contentW, 6, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  headers.forEach((h, i) => doc.text(h, colX[i], y));
+  y += 2;
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, y, margin + contentW, y);
+  y += 4;
+
+  // Table rows
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(26, 26, 46);
+  bands.forEach((b, i) => {
+    if (i % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y - 3.5, contentW, 5.5, 'F');
+    }
+    const circ  = metrics.circumferences[i].toFixed(1);
+    const cvx   = metrics.convexity[i].isConvex ? 'Yes' : 'No';
+    const err   = metrics.residuals[i].maxError_mm < 0.1 ? '~0' : metrics.residuals[i].maxError_mm.toFixed(2);
+
+    doc.setFontSize(8);
+    const vals = [
+      `B${String(i+1).padStart(2,'0')}`,
+      String(b.height_mm),
+      String(b.r0 * MM_PER_INDEX),
+      String(b.r90 * MM_PER_INDEX),
+      String(b.r180 * MM_PER_INDEX),
+      String(b.r270 * MM_PER_INDEX),
+      `${circ} mm`,
+      cvx,
+      `${err} mm`,
+    ];
+
+    if (!metrics.convexity[i].isConvex) {
+      doc.setTextColor(180, 83, 9);
+    }
+
+    vals.forEach((v, j) => doc.text(v, colX[j], y));
+    doc.setTextColor(26, 26, 46);
+    y += 5.5;
+  });
+
+  y += 6;
+  doc.line(margin, y, margin + contentW, y);
+  y += 8;
+
+  // ── Notes ────────────────────────────────────────────────────
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Measurement Protocol Notes', margin, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  const notes = [
+    '• R values displayed in mm (snap-node index × 5mm per node)',
+    '• Circumference computed by arc-length integration of 360-point Catmull-Rom cross-section',
+    '• Volume computed using divergence theorem on watertight triangle mesh',
+    '• Convex column: \'Yes\' indicates clinically valid smooth cross-section; \'No\' may indicate measurement error',
+    '• Spline fit error: deviation of interpolated curve from measured control points (~0 confirms correct interpolation)',
+  ];
+  notes.forEach(note => {
+    doc.text(note, margin, y);
+    y += 4.5;
+  });
+
+  // ── Footer ───────────────────────────────────────────────────
+  doc.setDrawColor(0, 102, 204);
+  doc.line(margin, 280, pageW - margin, 280);
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('ProstheticsTM — Confidential Clinical Measurement Report', margin, 285);
+  doc.text('Page 1', pageW - margin, 285, { align: 'right' });
+
+  doc.save('prosthetics_tm_report.pdf');
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 8: MAIN RECONSTRUCTION PIPELINE & UI WIRING
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Full reconstruction pipeline:
+ *   readInputTable → generateMesh → renderMesh → runAllMetrics
+ */
+function reconstruct() {
+  hideError();
+
+  const bands = readInputTable();
+  if (!bands) return;  // validation failed — error already shown
+
+  try {
+    const meshData = generateMesh(bands);
+    renderMesh(meshData);
+    const metrics = runAllMetrics(meshData, bands);
+
+    // Store for export
+    lastMeshData = meshData;
+    lastBands    = bands;
+    lastMetrics  = metrics;
+  } catch (err) {
+    showError('Reconstruction error: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ── Initialise everything on DOM ready ──────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Init input table with 10 empty rows
+  initInputTable(10);
+
+  // Init Three.js renderer into canvas wrapper
+  const wrapper = document.getElementById('canvas-wrapper');
+  initThreeJS(wrapper);
+
+  // ── Button event handlers ──────────────────────────────────
+  document.getElementById('btn-reconstruct').addEventListener('click', reconstruct);
+
+  document.getElementById('btn-demo').addEventListener('click', () => {
+    loadDemoData();
+    hideError();
+  });
+
+  document.getElementById('btn-add-band').addEventListener('click', () => {
+    hideError();
+    addBand();
+  });
+
+  document.getElementById('btn-rm-band').addEventListener('click', () => {
+    hideError();
+    removeBand();
+  });
+
+  document.getElementById('btn-export-csv').addEventListener('click', () => {
+    if (!lastMeshData) { showError('Reconstruct the limb first before exporting.'); return; }
+    exportCSV(lastMeshData.rings3D);
+  });
+
+  document.getElementById('btn-export-stl').addEventListener('click', () => {
+    if (!lastMeshData) { showError('Reconstruct the limb first before exporting.'); return; }
+    exportSTL(lastMeshData.vertices, lastMeshData.indices);
+  });
+
+  document.getElementById('btn-export-pdf').addEventListener('click', () => {
+    if (!lastMeshData || !lastMetrics) { showError('Reconstruct the limb first before exporting.'); return; }
+    exportPDF(lastBands, lastMetrics);
+  });
+
+  // ── Keyboard shortcut: Enter in any table cell triggers Reconstruct ──
+  document.getElementById('band-table').addEventListener('keydown', e => {
+    if (e.key === 'Enter') reconstruct();
+  });
+});
+</script>
+</body>
+</html>
