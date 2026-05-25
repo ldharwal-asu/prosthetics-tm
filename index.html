@@ -1372,7 +1372,7 @@ function exportSTL(vertices, indices) {
   const dv     = new DataView(buffer);
 
   // Header: ASCII text, zero-padded to 80 bytes
-  const headerStr = 'ProstheticsTM Residual Limb Reconstruction — Binary STL';
+  const headerStr = 'ProstheticsTM Residual Limb Reconstruction - Binary STL';
   for (let i = 0; i < 80; i++) {
     dv.setUint8(i, i < headerStr.length ? headerStr.charCodeAt(i) : 0);
   }
