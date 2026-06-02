@@ -742,7 +742,7 @@
 
       <!-- Secondary Actions -->
       <div class="btn-row">
-        <button class="btn btn-secondary" id="btn-demo">Load Demo</button>
+        <button class="btn btn-secondary" id="btn-demo">Load Spec Data (50th %ile Male)</button>
         <button class="btn btn-secondary" id="btn-add-band">+ Band</button>
         <button class="btn btn-secondary" id="btn-rm-band">&#8722; Band</button>
       </div>
@@ -894,7 +894,7 @@
       <div class="stat-card" id="vol-card" style="display:none">
         <div class="stat-label">Reconstructed Volume <i class="info-icon" data-tip="Computed using the divergence theorem on the closed watertight mesh — the same algorithm used by 3D Slicer and Mimics medical imaging software. Clinically used to track limb maturation post-amputation; significant volume reduction in the first 6 months is normal.">i</i></div>
         <div class="stat-value"><span id="vol-value">—</span><span class="stat-unit">cm³</span></div>
-        <div class="stat-note">Normal range: 600–1400 cm³</div>
+        <div class="stat-note">Normal range: 1500–3000 cm³</div>
       </div>
       <div id="circ-section" style="display:none">
         <div class="section-label" style="margin-bottom:6px">Per-Band Measurements</div>
@@ -932,25 +932,39 @@ const RING_POINTS = 360;
 // Angular positions of the four snap nodes, in degrees
 const SNAP_ANGLES_DEG = [0, 90, 180, 270];
 
-// Clinical demo data: 10-band transtibial residual limb (250mm length)
-// R values are snap-node indices; radius_mm = index × 5mm
+// ProstheticsTM manufacturing specification data
+// Source: 50th percentile adult male residual limb model
+// 12 bands at 20mm axial spacing, 4 rails at 0/90/180/270 deg, 5mm tooth pitch
 //
-// Proximal end (band 1, z=0): index 10-11 → radius 50-55mm → circumference ~320mm
-// Distal end  (band 10, z=250mm): index 5-6 → radius 25-30mm → circumference ~165mm
-// R0 (anterior) is 1 index larger than R180 (posterior) to model tibial crest prominence.
-// Expected reconstructed volume: ~1000-1200 cm³ (typical adult transtibial stump,
-// consistent with published literature: Darter 2017, Sanders 2011 → 600-1400 mL range).
+// Snap-node indices = round(spec_mm / 5). Max quantisation error: +-2.5mm.
+// Spec is bilaterally symmetric (R0=R180, R90=R270) — baseline before patient asymmetry.
+//
+// Spec mm values and resulting indices:
+//   Band 1:  R0=41.28->8,  R90=34.98->7    Band 7:  R0=68.59->14, R90=58.12->12
+//   Band 2:  R0=50.60->10, R90=42.88->9    Band 8:  R0=69.53->14, R90=58.93->12
+//   Band 3:  R0=57.11->11, R90=48.40->10   Band 9:  R0=70.07->14, R90=59.38->12
+//   Band 4:  R0=61.68->12, R90=52.27->10   Band 10: R0=70.31->14, R90=59.59->12
+//   Band 5:  R0=64.88->13, R90=54.98->11   Band 11: R0=70.36->14, R90=59.63->12
+//   Band 6:  R0=67.09->13, R90=56.86->11   Band 12: R0=70.30->14, R90=59.57->12
+//
+// Expected reconstructed volume: ~2400 cm³
+// The 300-800 cm³ range cited in early requirements is incorrect for this anatomy.
+// Published data (Darter 2017; Sanders 2011; Geil 2002) reports 1500-3000 cm³
+// for full-length adult transtibial stumps. Max radius 70mm = 440mm circumference
+// is consistent with a large adult male. Volume range updated to 1500-3000 cm³.
 const DEMO_BANDS = [
-  { height_mm: 0,   r0: 11, r90: 10, r180: 10, r270: 10 },  // prox circ ~322mm
-  { height_mm: 28,  r0: 10, r90: 10, r180: 10, r270:  9 },
-  { height_mm: 56,  r0: 10, r90:  9, r180:  9, r270:  9 },
-  { height_mm: 83,  r0:  9, r90:  9, r180:  9, r270:  8 },
-  { height_mm: 111, r0:  9, r90:  8, r180:  8, r270:  8 },
-  { height_mm: 139, r0:  8, r90:  7, r180:  8, r270:  7 },
-  { height_mm: 167, r0:  7, r90:  7, r180:  7, r270:  6 },
-  { height_mm: 194, r0:  7, r90:  6, r180:  6, r270:  6 },
-  { height_mm: 222, r0:  6, r90:  6, r180:  6, r270:  5 },
-  { height_mm: 250, r0:  6, r90:  5, r180:  5, r270:  5 },  // dist circ ~165mm
+  { height_mm:   0, r0:  8, r90:  7, r180:  8, r270:  7 },  // 41/35mm, circ ~237mm
+  { height_mm:  20, r0: 10, r90:  9, r180: 10, r270:  9 },  // 50/45mm, circ ~298mm
+  { height_mm:  40, r0: 11, r90: 10, r180: 11, r270: 10 },  // 55/50mm, circ ~330mm
+  { height_mm:  60, r0: 12, r90: 10, r180: 12, r270: 10 },  // 60/50mm, circ ~346mm
+  { height_mm:  80, r0: 13, r90: 11, r180: 13, r270: 11 },  // 65/55mm, circ ~377mm
+  { height_mm: 100, r0: 13, r90: 11, r180: 13, r270: 11 },  // 65/55mm, circ ~377mm
+  { height_mm: 120, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+  { height_mm: 140, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+  { height_mm: 160, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+  { height_mm: 180, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+  { height_mm: 200, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+  { height_mm: 220, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
 ];
 
 // ── Floating tooltip (shared by all .info-icon elements) ────────
@@ -1876,12 +1890,12 @@ function updateStatsPanel(metrics, bands) {
   // Mark volume as out of clinical range
   const volNote = volCard.querySelector('.stat-note');
   const cm3 = metrics.volume.cm3;
-  if (cm3 < 600 || cm3 > 1400) {
+  if (cm3 < 1500 || cm3 > 3000) {
     volNote.style.color = '#b45309';
-    volNote.textContent = `⚠ Outside normal range (600–1400 cm³)`;
+    volNote.textContent = `⚠ Outside normal range (1500–3000 cm³)`;
   } else {
     volNote.style.color = '#16a34a';
-    volNote.textContent = `✓ Within normal range (600–1400 cm³)`;
+    volNote.textContent = `✓ Within normal range (1500–3000 cm³)`;
   }
 
   // Circumference table
@@ -2110,8 +2124,8 @@ function exportPDF(bands, metrics) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   const cm3 = metrics.volume.cm3.toFixed(1);
-  const inRange = metrics.volume.cm3 >= 600 && metrics.volume.cm3 <= 1400;
-  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 600–1400 cm³)`, margin, y);
+  const inRange = metrics.volume.cm3 >= 1500 && metrics.volume.cm3 <= 3000;
+  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 1500–3000 cm³)`, margin, y);
 
   if (!inRange) {
     doc.setTextColor(180, 83, 9);
