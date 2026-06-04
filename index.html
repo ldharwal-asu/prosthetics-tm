@@ -80,9 +80,9 @@
     }
 
     #band-table {
-      width: 100%;
       border-collapse: collapse;
       font-size: 12px;
+      /* Do NOT set width:100% — let content drive width so overflow-x:auto scrolls */
     }
 
     #band-table thead th {
@@ -116,8 +116,8 @@
     }
 
     #band-table input[type="number"] {
-      width: 46px;
-      padding: 4px 3px;
+      width: 38px;
+      padding: 4px 2px;
       border: 1px solid #e2e8f0;
       border-radius: 4px;
       font-family: 'Inter', monospace;
@@ -1631,13 +1631,25 @@ function renderMesh(meshData) {
   meshObj = new THREE.Mesh(geometry, material);
   scene.add(meshObj);
 
-  // Fit camera to the new mesh's bounding sphere
-  geometry.computeBoundingSphere();
-  const { center, radius } = geometry.boundingSphere;
-  controls.target.copy(center);
-  camera.position.set(center.x, center.y - radius * 2.8, center.z + radius * 0.5);
-  camera.near = radius * 0.01;
-  camera.far  = radius * 20;
+  // Fit camera to bounding box — preserves limb proportions (avoids barrel look).
+  // Position the camera at a 3/4 angle so Z (height) reads vertically.
+  geometry.computeBoundingBox();
+  const bb  = geometry.boundingBox;
+  const cx  = (bb.max.x + bb.min.x) / 2;
+  const cy  = (bb.max.y + bb.min.y) / 2;
+  const cz  = (bb.max.z + bb.min.z) / 2;          // centroid Z (mid-height)
+  const limH = bb.max.z - bb.min.z;                // axial length (Z span)
+  const limR = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y) / 2;  // max XY radius
+
+  // Distance so limb height fills ~70% of viewport at FOV=45°.
+  // viewport_half_height ≈ dist * tan(22.5°) * 2, fill 70% → limH / (dist * 0.828) = 0.7
+  const dist = Math.max(limH / (0.7 * 0.828), limR * 3.5, 150);
+
+  controls.target.set(cx, cy, cz);
+  // 3/4 front-right-above view: X offset right, Y offset forward, Z at mid-height
+  camera.position.set(cx + dist * 0.65, cy - dist * 0.75, cz + dist * 0.4);
+  camera.near = dist * 0.01;
+  camera.far  = dist * 20;
   camera.updateProjectionMatrix();
   controls.update();
 
@@ -1895,18 +1907,16 @@ function computeResidualError(ring2D, band) {
   const angles    = getSnapAngles();
   const expectedR = band.radii.map(idx => idx * TOOTH_PITCH_MM);
   const errors = angles.map((theta, i) => {
-    const targetRad = theta * Math.PI / 180;
-
-    // Find the ring point with angle closest to target
+    // Work entirely in degrees [0, 360) to avoid atan2 sign-flip issues.
+    // atan2 returns (-π, π]; normalise to [0, 360).
     let bestDist = Infinity;
     let bestR    = 0;
     ring2D.forEach(p => {
-      const pAngle = Math.atan2(p.y, p.x);
-      // Angular distance (handle wrap-around)
-      let dAngle = Math.abs(pAngle - targetRad);
-      if (dAngle > Math.PI) dAngle = 2 * Math.PI - dAngle;
-      if (dAngle < bestDist) {
-        bestDist = dAngle;
+      const pDeg = ((Math.atan2(p.y, p.x) * 180 / Math.PI) + 360) % 360;
+      let dDeg   = Math.abs(pDeg - theta);
+      if (dDeg > 180) dDeg = 360 - dDeg;
+      if (dDeg < bestDist) {
+        bestDist = dDeg;
         bestR    = Math.sqrt(p.x*p.x + p.y*p.y);
       }
     });
