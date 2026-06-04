@@ -844,17 +844,59 @@
       <div>
         <div class="section-label-row">
           <span class="section-label" style="margin-bottom:0">Validation
-            <i class="info-icon" data-tip="Automatic checks run after reconstruction. Convexity failure means the cross-section is concave, indicating a likely measurement error at that band. Fit error should always be ~0mm.">i</i>
+            <i class="info-icon" data-tip="Self-consistency checks only. These verify the spline and mesh math are correct. They cannot measure accuracy against a real limb without a reference scan.">i</i>
           </span>
           <button id="btn-validation-mode" class="btn-device-info" title="Run inverse-problem test: quantise → reconstruct → compare RMSE">&#9654; Test Resolution</button>
         </div>
+        <!-- Permanent "NO REAL-LIMB DATA" banner — replaced by real metrics if ref scan loaded -->
+        <div id="no-real-limb-banner" style="margin-top:6px;padding:7px 9px;background:#fee2e2;border:1px solid #fca5a5;border-radius:5px;font-size:9.5px;color:#7f1d1d;line-height:1.5">
+          <div style="font-weight:700;margin-bottom:2px">⚠ NO REAL-LIMB DATA</div>
+          <div>All metrics below are self-consistency checks on synthetic input. Accuracy against real limbs is <strong>UNVALIDATED</strong>. Upload a Reference Scan to get real RMSE.</div>
+        </div>
+
+        <!-- Real accuracy panel — shown after ref scan load -->
+        <div id="real-accuracy-panel" style="display:none;margin-top:6px;padding:7px 9px;background:#dcfce7;border:1px solid #86efac;border-radius:5px;font-size:9.5px;color:#14532d;line-height:1.5">
+          <div style="font-weight:700;margin-bottom:2px">✓ Reference scan loaded</div>
+          <div id="real-accuracy-results">—</div>
+        </div>
+
         <div id="validation-panel" style="margin-top:6px">
           <span style="font-size:11px;color:#94a3b8;">Reconstruct to see validation results.</span>
         </div>
-        <!-- Accuracy disclaimers (verbatim clinical source text) -->
+
+        <!-- Resolution limits (always visible) -->
+        <div style="margin-top:6px;padding:6px 8px;background:#f1f5f9;border-left:3px solid #94a3b8;border-radius:0 4px 4px 0;font-size:9px;color:#475569;line-height:1.5">
+          <strong>Resolution limits:</strong> 8 rails resolve gross cross-section only. Sub-features &lt;45° apart (tibial crest, fibular head) are NOT captured at this rail count. Higher rail count or manual landmark entry needed for fitting-critical geometry.
+        </div>
+
+        <!-- Operator Variability panel -->
+        <div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px">
+          <div style="font-size:10px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Operator Variability Simulator</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px">
+            <label style="color:#475569;white-space:nowrap">Tension var. ±</label>
+            <input type="range" id="tension-var-slider" min="0" max="20" value="8" step="1" style="flex:1">
+            <span id="tension-var-value" style="font-weight:700;min-width:24px;text-align:right">8</span>
+            <span style="color:#64748b">%</span>
+          </div>
+          <button id="btn-repeatability" style="width:100%;padding:5px 8px;background:#475569;color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:5px">Run Repeatability (N=10)</button>
+          <div id="repeatability-results" style="display:none;font-size:9.5px;color:#334155;line-height:1.6"></div>
+          <div style="margin-top:5px;font-size:8.5px;color:#94a3b8;font-style:italic;line-height:1.4">A passive strap's repeatability is limited by operator tension. This simulates that variance — it is a LOWER BOUND; real-world variance will be higher. Target: CV &lt; 3% to compete with Geil 1.5mm inter-device threshold.</div>
+        </div>
+
+        <!-- Reference scan upload -->
+        <div style="margin-top:8px">
+          <div style="font-size:10px;font-weight:700;color:#334155;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Reference Scan (Ground Truth)</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <label for="ref-scan-upload" class="btn btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap">&#8679; Load PLY/OBJ/STL</label>
+            <input type="file" id="ref-scan-upload" accept=".ply,.obj,.stl" style="display:none">
+            <span id="ref-scan-name" style="font-size:9.5px;color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file loaded</span>
+          </div>
+        </div>
+
+        <!-- Accuracy disclaimer cards -->
         <div style="margin-top:8px;padding:7px 9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;font-size:9.5px;color:#475569;line-height:1.5">
-          <div style="font-weight:600;color:#334155;margin-bottom:3px">Device Accuracy</div>
-          <div>±2.5mm at 5mm node pitch — clinically acceptable for shape-based socket design (OpenLimbTT RMSE 0.5–3.1mm). NOT equivalent to optical scanner (Geil ≤1.5mm).</div>
+          <div style="font-weight:600;color:#334155;margin-bottom:3px">Device Accuracy Reference</div>
+          <div>±2.5mm at 5mm node pitch — clinically acceptable for shape-based socket design (OpenLimbTT RMSE 0.5–3.1mm). NOT equivalent to optical scanner (Geil ≤1.5mm). These figures are from published literature; this tool has NOT been independently validated.</div>
         </div>
         <div style="margin-top:6px;padding:7px 9px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;font-size:9.5px;color:#78350f;line-height:1.5">
           <div style="font-weight:600;margin-bottom:3px">Tissue Model Disclaimer</div>
@@ -971,7 +1013,7 @@
         <span class="layer-bar-label">LAYERS:</span>
         <button id="layer-limb" class="layer-btn layer-btn-active" data-layer="limb" title="Toggle limb surface">Limb</button>
         <button id="layer-straps" class="layer-btn" data-layer="straps" title="Toggle straps + rail combs">Straps</button>
-        <button id="layer-socket" class="layer-btn" data-layer="socket" title="Toggle rectified socket preview">Socket</button>
+        <button id="layer-socket" class="layer-btn" data-layer="socket" title="Socket preview — clinician rectification required">Socket*</button>
         <span id="layer-mode-badge"></span>
       </div>
 
@@ -993,9 +1035,12 @@
       </div>
 
       <!-- Socket controls (shown when socket layer active) -->
-      <div id="socket-layer-controls" style="display:none;position:absolute;top:48px;left:12px;z-index:10;background:rgba(255,255,255,0.94);border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;font-size:11px;min-width:240px">
-        <div style="font-weight:600;color:#475569;margin-bottom:5px;font-size:10px;letter-spacing:0.5px;text-transform:uppercase">Socket Options</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div id="socket-layer-controls" style="display:none;position:absolute;top:48px;left:12px;z-index:10;background:rgba(255,255,255,0.96);border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;font-size:11px;min-width:260px;max-height:80vh;overflow-y:auto">
+        <div style="font-weight:700;color:#dc2626;font-size:9.5px;letter-spacing:0.3px;margin-bottom:6px;line-height:1.4">Socket Preview (clinician-rectified required)</div>
+        <div style="font-size:9px;color:#475569;margin-bottom:8px;padding:5px 7px;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;line-height:1.4">
+          This is a measurement-derived starting shape. Final socket rectification requires a qualified prosthetist. This tool does not replace clinical judgment.
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <label style="font-size:10px;color:#475569">Liner:</label>
           <select id="liner-select" style="font-size:11px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px">
             <option value="0">No liner</option>
@@ -1003,12 +1048,33 @@
             <option value="6">6mm liner</option>
           </select>
         </div>
-        <div style="font-size:10px;color:#475569;margin-bottom:3px;font-weight:600">Bony Relief Pockets</div>
-        <div style="font-size:10px;color:#475569">0° Tibial crest: +<span id="relief-ant">3</span>mm</div>
-        <div style="font-size:10px;color:#475569">45° Fibular head: +<span id="relief-fib">2</span>mm</div>
-        <div style="font-size:10px;color:#475569">Distal tibia: +<span id="relief-dist">3</span>mm (distal 30%)</div>
-        <div style="margin-top:6px;font-size:9px;color:#94a3b8;font-style:italic">Rectified socket preview. Uniform offsets only — not a clinical socket prescription.</div>
-        <button id="btn-export-socket-stl" style="margin-top:8px;width:100%;padding:5px;background:#0066CC;color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Export Socket STL</button>
+        <div style="font-size:10px;font-weight:600;color:#475569;margin-bottom:5px">Suggested Relief Pockets <span style="font-weight:400;color:#94a3b8">— clinician must verify</span></div>
+        <div style="margin-bottom:4px">
+          <div style="font-size:9.5px;color:#334155">0° Tibial crest</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="range" id="relief-ant-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-ant">3.0</span>mm</span>
+          </div>
+          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+        </div>
+        <div style="margin-bottom:4px">
+          <div style="font-size:9.5px;color:#334155">45° Fibular head</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="range" id="relief-fib-slider" min="0" max="8" value="2" step="0.5" style="flex:1">
+            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-fib">2.0</span>mm</span>
+          </div>
+          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+        </div>
+        <div style="margin-bottom:6px">
+          <div style="font-size:9.5px;color:#334155">Distal tibia (distal 30%)</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="range" id="relief-dist-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-dist">3.0</span>mm</span>
+          </div>
+          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+        </div>
+        <button id="btn-export-socket-stl" style="width:100%;padding:5px;background:#475569;color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:4px">Export for Clinician CAD (STL)</button>
+        <div style="font-size:8.5px;color:#94a3b8;text-align:center">Input to prosthetist's CAD workflow — not a finished socket</div>
       </div>
 
       <!-- Overlay toggle button (top-right of viewer) -->
@@ -1068,7 +1134,7 @@
               <th>Height</th>
               <th>Circumf. <i class="info-icon" data-tip="Arc-length of the Catmull-Rom spline at this height. Equivalent to what a tape measure would read — validates the reconstruction against physical measurement.">i</i></th>
               <th>Convex <i class="info-icon" data-tip="All cross-sections of a healthy residual limb should be convex (no inward dips). Non-convex means the Catmull-Rom spline is oscillating between your 4 input points — likely a measurement error at that band.">i</i></th>
-              <th>Fit Error <i class="info-icon" data-tip="How far the spline deviates from the 4 input snap-node positions. Should always be ~0mm because Catmull-Rom is an interpolating spline — it passes exactly through the control points. Any non-zero value indicates a software bug.">i</i></th>
+              <th>Spline Residual <i class="info-icon" data-tip="Distance between control points and reconstructed curve. Near-zero is expected — this measures interpolation self-consistency, NOT measurement accuracy against a real limb. It cannot detect strap-placement error, tissue compression, or operator variability.">i</i></th>
             </tr>
           </thead>
           <tbody id="circ-body"></tbody>
@@ -2193,14 +2259,18 @@ function updateValidationPanel(convexity, bands) {
                              .filter(c => !c.isConvex);
 
   if (warnings.length === 0) {
-    panel.innerHTML = '<span class="ok-message">✓ All cross-sections are convex — no measurement errors detected.</span>';
+    panel.innerHTML = '<span class="ok-message">✓ All cross-sections convex (self-consistency only — not validated against real limb).</span>';
   } else {
-    panel.innerHTML = warnings.map(w =>
-      `<div class="warning-item">
+    panel.innerHTML = warnings.map(w => {
+      const isDistal = w.band <= 2;
+      const extra = isDistal
+        ? '<div style="font-size:9px;color:#b45309;margin-top:2px">Distal/irregular band: 8-rail sampling cannot resolve local bony features. Angular sub-features &lt;45° (tibial crest, fibular head) are below this device\'s angular resolution and may cause false concavity.</div>'
+        : '';
+      return `<div class="warning-item">
          <span class="warning-icon">⚠</span>
-         Band ${w.band} (${w.height}mm): non-convex cross-section — possible measurement error (${w.failCount} inflection${w.failCount > 1 ? 's' : ''})
-       </div>`
-    ).join('');
+         Band ${w.band} (${w.height}mm): non-convex — ${w.failCount} inflection${w.failCount > 1 ? 's' : ''}. Possible causes: measurement error, bony prominence below angular resolution, or strap slippage.${extra}
+       </div>`;
+    }).join('');
   }
 }
 
@@ -2503,7 +2573,7 @@ function exportPDF(bands, metrics) {
   // Table headers — dynamic N-rail columns
   const angles    = getSnapAngles();
   const rHdrs     = angles.map(a => `R${a}°`);
-  const headers   = ['Band', 'H(mm)', ...rHdrs, 'Circumf.', 'Convex', 'Fit Err'];
+  const headers   = ['Band', 'H(mm)', ...rHdrs, 'Circumf.', 'Convex', 'Spl.Res.'];
   const fixedCols = [margin, margin+14];                  // Band, H
   const rColW     = Math.min(18, Math.floor((contentW - 14 - 40) / (angles.length + 3)));
   const rColX     = angles.map((_, i) => margin + 28 + i * rColW);
@@ -2778,11 +2848,14 @@ function buildSocketLayer(meshData, bands) {
   const offVerts = new Float32Array(srcVerts.length);
   const colors   = new Float32Array(n * 3);
 
-  // Anatomical relief config (all in mm added on top of liner offset)
+  // Anatomical relief config — read from editable sliders
+  const reliefAnt  = parseFloat(document.getElementById('relief-ant')?.textContent  || 3);
+  const reliefFib  = parseFloat(document.getElementById('relief-fib')?.textContent  || 2);
+  const reliefDist = parseFloat(document.getElementById('relief-dist')?.textContent || 3);
   const BONY_RELIEFS = [
-    { angle: 0,   span: 25,  relief: 3.0, label: 'ant/tibial crest' },
-    { angle: 45,  span: 20,  relief: 2.0, label: 'fibular head' },
-    { angle: 315, span: 20,  relief: 2.0, label: 'distal fibula' },
+    { angle: 0,   span: 25, relief: reliefAnt,  label: 'ant/tibial crest' },
+    { angle: 45,  span: 20, relief: reliefFib,  label: 'fibular head' },
+    { angle: 315, span: 20, relief: reliefFib,  label: 'distal fibula' },
   ];
   const LOAD_COMPRESS = [  // negative offset at soft-tissue load zones
     { angle: 180, span: 40,  compress: 2.5, label: 'post/gastroc' },
@@ -2808,10 +2881,10 @@ function buildSocketLayer(meshData, bands) {
       if (diff < r.span) extra += r.relief * (1 - diff / r.span);
     });
 
-    // Distal tibia extra relief
+    // Distal tibia extra relief (uses editable reliefDist)
     if (z <= distalThreshold) {
       const t = 1 - (z - minZ) / (distalThreshold - minZ || 1);
-      extra += 3.0 * t;
+      extra += reliefDist * t;
     }
 
     // Load compression
@@ -2964,12 +3037,257 @@ function runValidationMode() {
   const results = document.getElementById('validation-mode-results');
   if (banner && results) {
     results.innerHTML =
-      `Vol error (quant. vs model): <b>${volErr.toFixed(1)}%</b><br>` +
-      `Device resolution: ±${TOOTH_PITCH_MM/2}mm per rail<br>` +
-      `Theoretical RMSE: <b>${deviceRMSE.toFixed(2)}mm</b><br>` +
-      `<span style="font-size:9px;color:#92400e">5mm node pitch — clinically acceptable for socket design (OpenLimbTT 0.5–3.1mm RMSE).</span>`;
+      `<b>Quantization Loss</b> <span title="Volume lost to 5mm node rounding vs the continuous model. This is the ONLY error this tool can compute internally. It does NOT include strap placement error, tissue compression, or operator variability — those require physical testing." style="cursor:help;text-decoration:underline dotted">(i)</span>: <b>${volErr.toFixed(1)}%</b><br>` +
+      `Node pitch: ±${TOOTH_PITCH_MM/2}mm (half-pitch, best case)<br>` +
+      `Theoretical RMSE bound: <b>${deviceRMSE.toFixed(2)}mm</b><br>` +
+      `<span style="font-size:9px;color:#92400e;font-style:italic">⚠ Internal estimate only. Does not include strap placement error, tissue compression, or operator variability. Physical validation against a scanner required for real accuracy figures.</span>`;
     banner.style.display = 'block';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 9: REPEATABILITY SIMULATOR & REFERENCE SCAN
+// ═══════════════════════════════════════════════════════════════
+
+// Per-zone compliance weights (bony zones resist compression more)
+function getZoneCompliance(angleDeg) {
+  const a = ((angleDeg % 360) + 360) % 360;
+  if (a <= 25 || a >= 335)     return 0.15;  // tibial crest — very stiff
+  if (a >= 25 && a <= 65)      return 0.20;  // fibular head — stiff
+  if (a >= 315 && a <= 335)    return 0.20;  // distal fibula
+  if (a >= 140 && a <= 220)    return 1.0;   // posterior/gastroc — soft
+  return 0.6;                                // ML sides — moderate
+}
+
+function runRepeatabilityTest() {
+  if (!lastBands) { showError('Reconstruct a limb first.'); return; }
+  const bands   = lastBands;
+  const varPct  = parseFloat(document.getElementById('tension-var-slider').value) / 100;
+  const angles  = getSnapAngles();
+  const N       = 10;
+  const volumes = [];
+
+  for (let pass = 0; pass < N; pass++) {
+    // Perturb each band's radii by tension variation, weighted by tissue compliance
+    const pertBands = bands.map(b => ({
+      height_mm: b.height_mm,
+      radii: b.radii.map((idx, ai) => {
+        const compliance = getZoneCompliance(angles[ai]);
+        // Random multiplier within ± (varPct * compliance)
+        const spread = varPct * compliance;
+        const delta  = (Math.random() * 2 - 1) * spread;
+        // Convert to mm, apply, re-quantize
+        const rMm = idx * TOOTH_PITCH_MM * (1 + delta);
+        return Math.max(1, Math.round(rMm / TOOTH_PITCH_MM));
+      }),
+    }));
+    try {
+      const m = generateMesh(pertBands);
+      const v = computeVolume(m.vertices, m.indices);
+      volumes.push(v.cm3);
+    } catch (_) { /* skip malformed pass */ }
+  }
+
+  if (volumes.length < 3) {
+    document.getElementById('repeatability-results').textContent = 'Too few valid passes.';
+    return;
+  }
+
+  const mean  = volumes.reduce((s, v) => s + v, 0) / volumes.length;
+  const sd    = Math.sqrt(volumes.reduce((s, v) => s + (v - mean)**2, 0) / volumes.length);
+  const cv    = (sd / mean * 100);
+  const minV  = Math.min(...volumes);
+  const maxV  = Math.max(...volumes);
+
+  // Simple ASCII histogram (10 bins)
+  const bins  = 8;
+  const bw    = (maxV - minV) / bins || 1;
+  const counts = Array(bins).fill(0);
+  volumes.forEach(v => {
+    const bi = Math.min(bins - 1, Math.floor((v - minV) / bw));
+    counts[bi]++;
+  });
+  const maxCount = Math.max(...counts);
+  const histRows = counts.map((c, i) => {
+    const bar   = '█'.repeat(Math.round(c / maxCount * 6));
+    const lo    = (minV + i * bw).toFixed(0);
+    const hi    = (minV + (i+1) * bw).toFixed(0);
+    return `<div style="font-family:monospace;font-size:9px">${String(lo).padStart(4)}–${String(hi).padEnd(4)} ${bar} (${c})</div>`;
+  }).join('');
+
+  const cvColor = cv < 3 ? '#16a34a' : cv < 6 ? '#b45309' : '#dc2626';
+  const resEl   = document.getElementById('repeatability-results');
+  resEl.style.display = 'block';
+  resEl.innerHTML =
+    `Mean: <b>${mean.toFixed(1)} cm³</b> &nbsp;|&nbsp; SD: <b>${sd.toFixed(1)} cm³</b><br>` +
+    `CV: <b style="color:${cvColor}">${cv.toFixed(1)}%</b> &nbsp;|&nbsp; Range: ${minV.toFixed(0)}–${maxV.toFixed(0)} cm³<br>` +
+    `<div style="margin-top:4px;font-size:9px;color:#475569">Volume distribution (${volumes.length} passes, ±${(varPct*100).toFixed(0)}% tension var.):</div>` +
+    histRows +
+    `<div style="margin-top:3px;font-size:8.5px;color:${cvColor}">${cv < 3 ? '✓ CV < 3% — repeatability target met at this tension variance' : cv < 6 ? '⚠ CV 3–6% — marginal; reduce strap tension variability' : '✗ CV > 6% — unacceptable variability'}</div>` +
+    `<div style="margin-top:3px;font-size:8px;color:#94a3b8;font-style:italic">The snap-lock mechanism absorbs continuous tension variation by discretizing to 5mm pitch — this is WHY CV stays low. Real-world variance also includes angular strap placement (not simulated here) and limb shape change between sessions.</div>`;
+}
+
+// ── Reference scan ingestion (PLY / OBJ / STL) ───────────────
+let refScanPoints = null;  // Array<{x,y,z}> parsed from reference mesh
+
+function loadReferenceScan(file) {
+  const name = file.name;
+  document.getElementById('ref-scan-name').textContent = name;
+
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const ext = name.split('.').pop().toLowerCase();
+      let pts = [];
+
+      if (ext === 'obj') {
+        // Parse OBJ vertices only
+        evt.target.result.split('\n').forEach(line => {
+          const p = line.trim().split(/\s+/);
+          if (p[0] === 'v' && p.length >= 4) {
+            pts.push({ x: parseFloat(p[1]), y: parseFloat(p[2]), z: parseFloat(p[3]) });
+          }
+        });
+      } else if (ext === 'stl') {
+        // Try ASCII STL first
+        const text = evt.target.result;
+        if (typeof text === 'string') {
+          text.split('\n').forEach(line => {
+            const p = line.trim().split(/\s+/);
+            if (p[0] === 'vertex' && p.length >= 4) {
+              pts.push({ x: parseFloat(p[1]), y: parseFloat(p[2]), z: parseFloat(p[3]) });
+            }
+          });
+        } else {
+          // Binary STL
+          const dv = new DataView(text);
+          const nTri = dv.getUint32(80, true);
+          for (let i = 0; i < nTri; i++) {
+            const base = 84 + i * 50;
+            for (let v = 0; v < 3; v++) {
+              pts.push({
+                x: dv.getFloat32(base + 12 + v*12,   true),
+                y: dv.getFloat32(base + 12 + v*12+4, true),
+                z: dv.getFloat32(base + 12 + v*12+8, true),
+              });
+            }
+          }
+        }
+      } else if (ext === 'ply') {
+        // ASCII PLY only
+        const lines   = evt.target.result.split('\n');
+        let inData    = false;
+        let vertCount = 0;
+        let parsed    = 0;
+        lines.forEach(line => {
+          if (!inData) {
+            if (line.startsWith('element vertex')) vertCount = parseInt(line.split(' ')[2]);
+            if (line.trim() === 'end_header') inData = true;
+            return;
+          }
+          if (parsed < vertCount) {
+            const p = line.trim().split(/\s+/);
+            if (p.length >= 3) {
+              pts.push({ x: parseFloat(p[0]), y: parseFloat(p[1]), z: parseFloat(p[2]) });
+              parsed++;
+            }
+          }
+        });
+      }
+
+      if (pts.length < 100) throw new Error(`Only ${pts.length} vertices found — file may be binary PLY (not supported) or malformed.`);
+
+      refScanPoints = pts;
+      computeRefScanRMSE();
+    } catch (e) {
+      showError('Reference scan parse error: ' + e.message);
+    }
+  };
+
+  if (file.name.toLowerCase().endsWith('.stl')) {
+    // Try text first (ASCII STL). If it looks binary, re-read as ArrayBuffer.
+    const textReader = new FileReader();
+    textReader.onload = evt2 => {
+      const txt = evt2.target.result;
+      const isBinary = !txt.trimStart().startsWith('solid');
+      if (isBinary) {
+        // Re-read as ArrayBuffer for binary STL
+        const binReader = new FileReader();
+        binReader.onload = evt3 => {
+          // Simulate the original reader callback with ArrayBuffer
+          const dv = new DataView(evt3.target.result);
+          const nTri = dv.getUint32(80, true);
+          const pts = [];
+          for (let i = 0; i < nTri; i++) {
+            const base = 84 + i * 50;
+            for (let v = 0; v < 3; v++) {
+              pts.push({
+                x: dv.getFloat32(base + 12 + v*12,   true),
+                y: dv.getFloat32(base + 12 + v*12+4, true),
+                z: dv.getFloat32(base + 12 + v*12+8, true),
+              });
+            }
+          }
+          try {
+            if (pts.length < 100) throw new Error(`Only ${pts.length} vertices found in binary STL.`);
+            refScanPoints = pts;
+            computeRefScanRMSE();
+          } catch (e) { showError('Reference scan error: ' + e.message); }
+        };
+        binReader.readAsArrayBuffer(file);
+      } else {
+        // ASCII STL — process via main reader
+        reader.onload({ target: { result: txt } });
+      }
+    };
+    textReader.readAsText(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function computeRefScanRMSE() {
+  if (!refScanPoints || !lastMeshData) return;
+
+  // Build flat array of mesh vertices from lastMeshData for fast nearest-point lookup
+  const V   = lastMeshData.vertices;
+  const N   = V.length / 3;
+
+  // Sample up to 1000 ref points (performance cap)
+  const step = Math.max(1, Math.floor(refScanPoints.length / 1000));
+  const sample = refScanPoints.filter((_, i) => i % step === 0);
+
+  let sumSq = 0;
+  let count = 0;
+
+  sample.forEach(rp => {
+    let minD2 = Infinity;
+    for (let i = 0; i < N; i++) {
+      const dx = V[i*3] - rp.x, dy = V[i*3+1] - rp.y, dz = V[i*3+2] - rp.z;
+      const d2 = dx*dx + dy*dy + dz*dz;
+      if (d2 < minD2) minD2 = d2;
+    }
+    sumSq += minD2; count++;
+  });
+
+  const rmse = Math.sqrt(sumSq / count);
+
+  // Volume of ref scan (bounding box proxy — exact requires mesh connectivity)
+  const xs = refScanPoints.map(p => p.x), ys = refScanPoints.map(p => p.y), zs = refScanPoints.map(p => p.z);
+  const refVol = ((Math.max(...xs)-Math.min(...xs)) * (Math.max(...ys)-Math.min(...ys)) * (Math.max(...zs)-Math.min(...zs))) / 1000;
+  const reconVol = lastMetrics ? lastMetrics.volume.cm3 : null;
+  const volDiff  = reconVol ? Math.abs(reconVol - refVol) / refVol * 100 : null;
+
+  // Show real accuracy panel, hide synthetic banner
+  document.getElementById('no-real-limb-banner').style.display = 'none';
+  const panel   = document.getElementById('real-accuracy-panel');
+  const results = document.getElementById('real-accuracy-results');
+  panel.style.display   = 'block';
+  results.innerHTML =
+    `Surface RMSE: <b>${rmse.toFixed(2)}mm</b> (vs Geil threshold ≤1.5mm)<br>` +
+    (volDiff !== null ? `Volume diff vs ref: <b>${volDiff.toFixed(1)}%</b> (ref BBox proxy)<br>` : '') +
+    `Ref points used: ${sample.length} of ${refScanPoints.length}<br>` +
+    `<span style="font-size:8.5px;color:#14532d">Note: volume uses bounding-box proxy for ref scan (requires watertight mesh for exact value)</span>`;
 }
 
 // ── Legacy toggleSocketPreview wrapper (kept for compatibility) ─
@@ -3184,6 +3502,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Socket STL export ──────────────────────────────────────
   const sockStlBtn = document.getElementById('btn-export-socket-stl');
   if (sockStlBtn) sockStlBtn.addEventListener('click', exportSocketSTL);
+
+  // ── Editable relief sliders ────────────────────────────────
+  ['ant', 'fib', 'dist'].forEach(zone => {
+    const sl = document.getElementById(`relief-${zone}-slider`);
+    if (sl) {
+      sl.addEventListener('input', () => {
+        const v = parseFloat(sl.value).toFixed(1);
+        document.getElementById(`relief-${zone}`).textContent = v;
+        if (layerState.socket && lastMeshData && lastBands) buildSocketLayer(lastMeshData, lastBands);
+      });
+    }
+  });
+
+  // ── Tension variation slider ───────────────────────────────
+  const tensionVarSl = document.getElementById('tension-var-slider');
+  if (tensionVarSl) {
+    tensionVarSl.addEventListener('input', () => {
+      document.getElementById('tension-var-value').textContent = tensionVarSl.value;
+    });
+  }
+
+  // ── Repeatability test button ──────────────────────────────
+  const repBtn = document.getElementById('btn-repeatability');
+  if (repBtn) repBtn.addEventListener('click', runRepeatabilityTest);
+
+  // ── Reference scan upload ──────────────────────────────────
+  const refInput = document.getElementById('ref-scan-upload');
+  if (refInput) {
+    refInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) loadReferenceScan(file);
+      refInput.value = '';
+    });
+  }
 
   // ── Validation mode button ─────────────────────────────────
   const valModeBtn = document.getElementById('btn-validation-mode');
