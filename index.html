@@ -1049,29 +1049,62 @@
           </select>
         </div>
         <div style="font-size:10px;font-weight:600;color:#475569;margin-bottom:5px">Suggested Relief Pockets <span style="font-weight:400;color:#94a3b8">— clinician must verify</span></div>
-        <div style="margin-bottom:4px">
-          <div style="font-size:9.5px;color:#334155">0° Tibial crest</div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <input type="range" id="relief-ant-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
-            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-ant">3.0</span>mm</span>
+        <!-- TT-specific zones (shown in TT mode) -->
+        <div id="socket-zones-tt">
+          <div style="margin-bottom:4px">
+            <div style="font-size:9.5px;color:#334155">0° Tibial crest</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-ant-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-ant">3.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
           </div>
-          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+          <div style="margin-bottom:4px">
+            <div style="font-size:9.5px;color:#334155">45° Fibular head</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-fib-slider" min="0" max="8" value="2" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-fib">2.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+          </div>
+          <div style="margin-bottom:6px">
+            <div style="font-size:9.5px;color:#334155">Distal tibia (distal 30%)</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-dist-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-dist">3.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+          </div>
         </div>
-        <div style="margin-bottom:4px">
-          <div style="font-size:9.5px;color:#334155">45° Fibular head</div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <input type="range" id="relief-fib-slider" min="0" max="8" value="2" step="0.5" style="flex:1">
-            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-fib">2.0</span>mm</span>
+        <!-- TF-specific zones (shown in TF mode) -->
+        <div id="socket-zones-tf" style="display:none">
+          <div style="margin-bottom:4px">
+            <div style="font-size:9.5px;color:#334155">270° Greater trochanter (lateral, top 40%)</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-tf-troch-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-tf-troch">3.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
           </div>
-          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
-        </div>
-        <div style="margin-bottom:6px">
-          <div style="font-size:9.5px;color:#334155">Distal tibia (distal 30%)</div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <input type="range" id="relief-dist-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
-            <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-dist">3.0</span>mm</span>
+          <div style="margin-bottom:4px">
+            <div style="font-size:9.5px;color:#334155">90° Adductor longus (medial, mid-section)</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-tf-add-slider" min="0" max="8" value="2" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-tf-add">2.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
           </div>
-          <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+          <div style="margin-bottom:4px">
+            <div style="font-size:9.5px;color:#334155">Distal femur end (distal 25%)</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <input type="range" id="relief-tf-dist-slider" min="0" max="8" value="3" step="0.5" style="flex:1">
+              <span style="font-size:10px;font-weight:600;min-width:28px">+<span id="relief-tf-dist">3.0</span>mm</span>
+            </div>
+            <div style="font-size:8.5px;color:#f59e0b">Suggested — clinician must verify location &amp; depth</div>
+          </div>
+          <div style="margin-bottom:6px;padding:5px 7px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;font-size:8.5px;color:#1e40af">
+            Proximal bands have ischial shelf region (posterior wider). Quadrilateral proximal trim line requires clinical fitting — not represented in this shape model.
+          </div>
         </div>
         <button id="btn-export-socket-stl" style="width:100%;padding:5px;background:#475569;color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:4px">Export for Clinician CAD (STL)</button>
         <div style="font-size:8.5px;color:#94a3b8;text-align:center">Input to prosthetist's CAD workflow — not a finished socket</div>
@@ -1195,18 +1228,23 @@ const SAMPLE_LIMB_TT = [
 // Backward-compat alias (CSV upload etc. may reference old name)
 const SAMPLE_LIMB_V2 = SAMPLE_LIMB_TT;
 
-// SAMPLE_LIMB_TF — Transfemoral (above-knee) preset
-// 180mm length, distal circ ~250mm, proximal circ ~380mm, near-round cross-section
-// Expected volume: ~1,400 cm³
+// SAMPLE_LIMB_TF — Transfemoral (above-knee) residual limb
+// Anatomically correct: femur buried in large soft-tissue mass, nearly circular cross-section
+// 280mm length (mid-length stump), distal circ ~220mm, proximal circ ~285mm
+// Ellipticity a/b=1.06 (vs 1.18 TT) — femur deep, soft tissue dominates
+// Gentle linear taper — stays wide almost all the way to distal end (unlike TT)
+// Top 2 bands have posterior asymmetry (ischial shelf region: post/ant ratio ~1.11)
+// Bony reliefs: greater trochanter (lateral ~270°), adductor longus (medial ~90°), distal femur
+// Expected volume: ~1,400 cm³ (clinical range 800–2000 cm³)
 const SAMPLE_LIMB_TF = [
-  { height_mm:   0.0, radii: [8, 8, 8, 8, 8, 8, 8, 8] },
-  { height_mm:  25.7, radii: [9, 8, 9, 8, 9, 8, 9, 8] },
-  { height_mm:  51.4, radii: [9, 9, 9, 9, 9, 9, 9, 9] },
-  { height_mm:  77.1, radii: [10, 9, 10, 9, 10, 9, 10, 9] },
-  { height_mm: 102.9, radii: [10, 10, 10, 10, 10, 10, 10, 10] },
-  { height_mm: 128.6, radii: [11, 10, 11, 10, 11, 10, 11, 10] },
-  { height_mm: 154.3, radii: [11, 11, 11, 11, 11, 11, 11, 11] },
-  { height_mm: 180.0, radii: [12, 12, 12, 12, 12, 12, 12, 12] },
+  { height_mm:   0.0, radii: [7, 7, 7, 7, 7, 7, 7, 7] },   // distal femur: ~35mm all around
+  { height_mm:  40.0, radii: [8, 7, 7, 7, 8, 7, 7, 7] },   // gentle taper begins
+  { height_mm:  80.0, radii: [8, 8, 7, 8, 8, 8, 7, 8] },
+  { height_mm: 120.0, radii: [8, 8, 8, 8, 8, 8, 8, 8] },   // mid-shaft: nearly circular
+  { height_mm: 160.0, radii: [8, 8, 8, 8, 8, 8, 8, 8] },
+  { height_mm: 200.0, radii: [9, 8, 8, 8, 9, 8, 8, 8] },
+  { height_mm: 240.0, radii: [9, 9, 8, 9, 10, 9, 8, 9] },  // 180° (post) wider = ischial shelf region
+  { height_mm: 280.0, radii: [9, 9, 9, 9, 10, 9, 9, 9] },  // proximal: posterior notably wider — ischial containment
 ];
 
 // Active preset: default transtibial
@@ -2848,24 +2886,44 @@ function buildSocketLayer(meshData, bands) {
   const offVerts = new Float32Array(srcVerts.length);
   const colors   = new Float32Array(n * 3);
 
-  // Anatomical relief config — read from editable sliders
-  const reliefAnt  = parseFloat(document.getElementById('relief-ant')?.textContent  || 3);
-  const reliefFib  = parseFloat(document.getElementById('relief-fib')?.textContent  || 2);
-  const reliefDist = parseFloat(document.getElementById('relief-dist')?.textContent || 3);
-  const BONY_RELIEFS = [
-    { angle: 0,   span: 25, relief: reliefAnt,  label: 'ant/tibial crest' },
-    { angle: 45,  span: 20, relief: reliefFib,  label: 'fibular head' },
-    { angle: 315, span: 20, relief: reliefFib,  label: 'distal fibula' },
-  ];
-  const LOAD_COMPRESS = [  // negative offset at soft-tissue load zones
-    { angle: 180, span: 40,  compress: 2.5, label: 'post/gastroc' },
-    { angle: 90,  span: 30,  compress: 1.5, label: 'patellar tendon zone' },
-  ];
-
-  // Height range for distal-tibia extra relief (bottom 30% of limb)
+  // Mode-specific anatomical relief config — read from editable sliders
   const minZ = meshData.rings3D[0][0].z;
   const maxZ = meshData.rings3D[meshData.rings3D.length-1][0].z;
-  const distalThreshold = minZ + (maxZ - minZ) * 0.30;
+  const limbLen = maxZ - minZ;
+  let BONY_RELIEFS, LOAD_COMPRESS, distalThreshold;
+
+  if (CURRENT_MODE === 'TF') {
+    // Transfemoral: greater trochanter (lat ~70% height), adductor longus (med), distal femur
+    const reliefTroch = parseFloat(document.getElementById('relief-tf-troch')?.textContent || 3);
+    const reliefAdd   = parseFloat(document.getElementById('relief-tf-add')?.textContent   || 2);
+    const reliefTFDist= parseFloat(document.getElementById('relief-tf-dist')?.textContent  || 3);
+    BONY_RELIEFS = [
+      { angle: 270, span: 30, relief: reliefTroch, zMin: minZ + limbLen*0.5, zMax: maxZ,   label: 'greater trochanter' },
+      { angle:  90, span: 25, relief: reliefAdd,   zMin: minZ + limbLen*0.3, zMax: minZ + limbLen*0.7, label: 'adductor longus' },
+    ];
+    LOAD_COMPRESS = [
+      { angle: 0,   span: 30, compress: 1.5, label: 'ant/quad pressure zone' },
+    ];
+    distalThreshold = minZ + limbLen * 0.25;  // distal femur extra relief zone
+    // Store distFemur relief depth separately for inline use
+    BONY_RELIEFS._tfDistRelief = reliefTFDist;
+  } else {
+    // Transtibial: tibial crest (ant), fibular head (45°), distal tibia
+    const reliefAnt  = parseFloat(document.getElementById('relief-ant')?.textContent  || 3);
+    const reliefFib  = parseFloat(document.getElementById('relief-fib')?.textContent  || 2);
+    const reliefDist = parseFloat(document.getElementById('relief-dist')?.textContent || 3);
+    BONY_RELIEFS = [
+      { angle:   0, span: 25, relief: reliefAnt, label: 'ant/tibial crest' },
+      { angle:  45, span: 20, relief: reliefFib, label: 'fibular head' },
+      { angle: 315, span: 20, relief: reliefFib, label: 'distal fibula' },
+    ];
+    BONY_RELIEFS._ttDistRelief = reliefDist;
+    LOAD_COMPRESS = [
+      { angle: 180, span: 40, compress: 2.5, label: 'post/gastroc' },
+      { angle:  90, span: 30, compress: 1.5, label: 'patellar tendon zone' },
+    ];
+    distalThreshold = minZ + limbLen * 0.30;
+  }
 
   for (let i = 0; i < n; i++) {
     const x = srcVerts[i*3], y = srcVerts[i*3+1], z = srcVerts[i*3+2];
@@ -2874,17 +2932,20 @@ function buildSocketLayer(meshData, bands) {
     const angleDeg = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
     let extra = 0;
 
-    // Bony relief
+    // Bony relief (with optional height constraint for TF zones)
     BONY_RELIEFS.forEach(r => {
+      // Height-gated zones (TF only): zMin/zMax restrict to anatomical region
+      if (r.zMin !== undefined && (z < r.zMin || z > r.zMax)) return;
       let diff = Math.abs(angleDeg - r.angle);
       if (diff > 180) diff = 360 - diff;
       if (diff < r.span) extra += r.relief * (1 - diff / r.span);
     });
 
-    // Distal tibia extra relief (uses editable reliefDist)
+    // Distal end extra relief (both modes, different depth)
     if (z <= distalThreshold) {
       const t = 1 - (z - minZ) / (distalThreshold - minZ || 1);
-      extra += reliefDist * t;
+      const dr = BONY_RELIEFS._tfDistRelief || BONY_RELIEFS._ttDistRelief || 3;
+      extra += dr * t;
     }
 
     // Load compression
@@ -3000,6 +3061,16 @@ function setMode(mode) {
   document.getElementById('mode-tf').classList.toggle('mode-btn-active', mode === 'TF');
   const badge = document.getElementById('layer-mode-badge');
   if (badge) badge.textContent = mode === 'TF' ? 'Transfemoral' : 'Transtibial';
+
+  // Switch socket relief zone panels
+  const ttZones = document.getElementById('socket-zones-tt');
+  const tfZones = document.getElementById('socket-zones-tf');
+  if (ttZones) ttZones.style.display = mode === 'TF' ? 'none' : 'block';
+  if (tfZones) tfZones.style.display = mode === 'TF' ? 'block' : 'none';
+
+  // Update ischial shelf visual indicator visibility
+  updateIschialShelfMarker();
+
   loadDemoData(mode);
   reconstruct();
 }
@@ -3050,13 +3121,80 @@ function runValidationMode() {
 // ═══════════════════════════════════════════════════════════════
 
 // Per-zone compliance weights (bony zones resist compression more)
+// Different anatomy for TT vs TF
 function getZoneCompliance(angleDeg) {
   const a = ((angleDeg % 360) + 360) % 360;
-  if (a <= 25 || a >= 335)     return 0.15;  // tibial crest — very stiff
-  if (a >= 25 && a <= 65)      return 0.20;  // fibular head — stiff
-  if (a >= 315 && a <= 335)    return 0.20;  // distal fibula
-  if (a >= 140 && a <= 220)    return 1.0;   // posterior/gastroc — soft
-  return 0.6;                                // ML sides — moderate
+  if (CURRENT_MODE === 'TF') {
+    // TF: femur is deep in soft tissue, all zones relatively compliant
+    // Greater trochanter (270°) and distal femur are the stiff spots
+    if (a >= 240 && a <= 300)  return 0.20;  // greater trochanter — moderately stiff
+    if (a >= 60  && a <= 120)  return 0.35;  // adductor longus — stiffer tendon
+    return 0.75;                             // soft tissue — high compliance
+  } else {
+    // TT anatomy
+    if (a <= 25 || a >= 335)   return 0.15;  // tibial crest — very stiff
+    if (a >= 25 && a <= 65)    return 0.20;  // fibular head — stiff
+    if (a >= 315 && a <= 335)  return 0.20;  // distal fibula
+    if (a >= 140 && a <= 220)  return 1.0;   // posterior/gastroc — soft
+    return 0.6;                              // ML sides — moderate
+  }
+}
+
+// Add or remove ischial shelf marker in 3D scene (TF mode only)
+let ischialShelfObj = null;
+function updateIschialShelfMarker() {
+  if (ischialShelfObj) {
+    scene.remove(ischialShelfObj);
+    ischialShelfObj.geometry.dispose();
+    ischialShelfObj.material.dispose();
+    ischialShelfObj = null;
+  }
+  if (CURRENT_MODE !== 'TF' || !lastMeshData) return;
+
+  // Find the proximal ring (top band)
+  const topRing = lastMeshData.rings3D[lastMeshData.rings3D.length - 1];
+  if (!topRing) return;
+  const z = topRing[0].z;
+
+  // Ischial shelf = flat horizontal disc on the posterior side (180°) at proximal end
+  // Semi-circle covering 120°–240° (posterior half), radius = max posterior radius
+  const pts = [];
+  const cx = 0, cy = 0;
+  // Sample from ring the posterior arc (150°–210°)
+  const startAngle = 140 * Math.PI / 180, endAngle = 220 * Math.PI / 180;
+  const nPts = 20;
+  // Use the ring's own points for the outer edge
+  const postPts = topRing.filter(p => {
+    const a = ((Math.atan2(p.y, p.x) * 180 / Math.PI) + 360) % 360;
+    return a >= 140 && a <= 220;
+  });
+
+  if (postPts.length < 3) return;
+
+  // Build a flat shelf geometry (fan from centroid to posterior arc)
+  const shelfVerts = [];
+  const shelfIdx   = [];
+  // centroid vertex
+  shelfVerts.push(cx, cy, z + 1);  // slightly above top ring
+  postPts.forEach(p => shelfVerts.push(p.x, p.y, z + 1));
+  for (let i = 1; i < postPts.length; i++) {
+    shelfIdx.push(0, i, i + 1 < postPts.length + 1 ? i + 1 : 1);
+  }
+
+  const shelfGeo = new THREE.BufferGeometry();
+  shelfGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(shelfVerts), 3));
+  shelfGeo.setIndex(shelfIdx);
+  shelfGeo.computeVertexNormals();
+
+  const shelfMat = new THREE.MeshPhongMaterial({
+    color: 0xFFAA44,
+    opacity: 0.55,
+    transparent: true,
+    side: THREE.DoubleSide,
+  });
+
+  ischialShelfObj = new THREE.Mesh(shelfGeo, shelfMat);
+  scene.add(ischialShelfObj);
 }
 
 function runRepeatabilityTest() {
@@ -3336,6 +3474,7 @@ function reconstruct() {
       buildStrapsLayer(meshData.rings2D, bands, tension);
     }
     if (layerState.socket) buildSocketLayer(meshData, bands);
+    updateIschialShelfMarker();
 
     // Update layer mode badge
     const badge = document.getElementById('layer-mode-badge');
@@ -3503,8 +3642,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const sockStlBtn = document.getElementById('btn-export-socket-stl');
   if (sockStlBtn) sockStlBtn.addEventListener('click', exportSocketSTL);
 
-  // ── Editable relief sliders ────────────────────────────────
+  // ── Editable relief sliders (TT) ──────────────────────────
   ['ant', 'fib', 'dist'].forEach(zone => {
+    const sl = document.getElementById(`relief-${zone}-slider`);
+    if (sl) {
+      sl.addEventListener('input', () => {
+        const v = parseFloat(sl.value).toFixed(1);
+        document.getElementById(`relief-${zone}`).textContent = v;
+        if (layerState.socket && lastMeshData && lastBands) buildSocketLayer(lastMeshData, lastBands);
+      });
+    }
+  });
+
+  // ── Editable relief sliders (TF) ──────────────────────────
+  ['tf-troch', 'tf-add', 'tf-dist'].forEach(zone => {
     const sl = document.getElementById(`relief-${zone}-slider`);
     if (sl) {
       sl.addEventListener('input', () => {
