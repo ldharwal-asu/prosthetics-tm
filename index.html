@@ -715,21 +715,38 @@
           </span>
           <button class="btn-device-info" id="btn-device-info">&#9432; How device works</button>
         </div>
+        <!-- Rail count selector + disclaimer -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+          <label style="font-size:11px;font-weight:600;color:#475569">Rails per band:</label>
+          <select id="rail-count" style="font-size:11px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff">
+            <option value="4">4 rails</option>
+            <option value="6">6 rails</option>
+            <option value="8" selected>8 rails</option>
+            <option value="12">12 rails</option>
+            <option value="16">16 rails</option>
+          </select>
+          <span id="rail-disclaimer" style="font-size:10px;color:#64748b;font-style:italic">
+            Assumes <span id="rail-count-display">8</span>-rail device. Geometry between rails is interpolated, not measured.
+          </span>
+        </div>
+        <!-- Sample data badge -->
+        <div id="sample-badge" style="display:none;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:4px 8px;font-size:10px;color:#1e40af;margin-bottom:5px">
+          <span>&#9432; Sample spec data loaded — edit table or upload CSV for patient measurements</span>
+          <button id="dismiss-badge" style="background:none;border:none;cursor:pointer;color:#1e40af;font-size:12px;padding:0;margin-left:4px">&times;</button>
+        </div>
         <div id="band-table-wrapper">
           <table id="band-table">
-            <thead>
-              <tr>
-                <th>Band</th>
-                <th>H(mm) <i class="info-icon" data-tip="Height in mm from the distal tip of the residual limb. Band 1 is at the bottom (distal end). Heights must be strictly increasing.">i</i></th>
-                <th>R0° <i class="info-icon" data-tip="Snap-node index at 0° (anterior). Each index unit = 5mm of radius. Index 10 = 50mm radius = ~314mm circumference. 0° faces the front of the limb (tibial side).">i</i></th>
-                <th>R90° <i class="info-icon" data-tip="Snap-node index at 90° (medial, inside of leg). Index × 5mm = radius in mm.">i</i></th>
-                <th>R180° <i class="info-icon" data-tip="Snap-node index at 180° (posterior, back of limb). Typically slightly smaller than R0° due to less tissue mass.">i</i></th>
-                <th>R270° <i class="info-icon" data-tip="Snap-node index at 270° (lateral, outside of leg). Often slightly smaller than R90°.">i</i></th>
-              </tr>
-            </thead>
+            <thead id="band-thead"></thead>
             <tbody id="band-body"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- CSV Upload -->
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <label for="csv-upload" class="btn btn-ghost" style="cursor:pointer;white-space:nowrap">&#8679; Upload CSV</label>
+        <input type="file" id="csv-upload" accept=".csv" style="display:none">
+        <div id="csv-preview" style="display:none;font-size:10px;color:#475569;flex:1;padding:4px 6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;line-height:1.4"></div>
       </div>
 
       <!-- Error Banner -->
@@ -742,7 +759,7 @@
 
       <!-- Secondary Actions -->
       <div class="btn-row">
-        <button class="btn btn-secondary" id="btn-demo">Load Spec Data (50th %ile Male)</button>
+        <button class="btn btn-secondary" id="btn-demo">Load Sample (8-rail spec)</button>
         <button class="btn btn-secondary" id="btn-add-band">+ Band</button>
         <button class="btn btn-secondary" id="btn-rm-band">&#8722; Band</button>
       </div>
@@ -751,7 +768,8 @@
       <div>
         <div class="section-label">Export</div>
         <div class="btn-row">
-          <button class="btn btn-ghost" id="btn-export-csv">CSV</button>
+          <button class="btn btn-ghost" id="btn-export-csv" title="360-pt interpolated point cloud">Point Cloud CSV</button>
+          <button class="btn btn-ghost" id="btn-export-rail-csv" title="Raw snap-node rail readings">Rail CSV</button>
           <button class="btn btn-ghost" id="btn-export-stl">STL</button>
           <button class="btn btn-ghost" id="btn-export-pdf">PDF Report</button>
         </div>
@@ -874,6 +892,18 @@
       <!-- Overlay toggle button (top-right of viewer) -->
       <button id="overlay-toggle" title="Show measurement band rings and snap nodes">&#8853; Overlay</button>
 
+      <!-- Socket preview toggle -->
+      <div id="socket-controls" style="position:absolute;top:8px;right:90px;display:flex;align-items:center;gap:6px;z-index:10">
+        <button id="socket-toggle" title="Uniform offset preview — not a clinical socket" style="background:rgba(255,255,255,0.92);border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit">&#9711; Socket Preview</button>
+        <input id="socket-offset-mm" type="number" value="4" min="1" max="20" step="0.5" title="Offset mm" style="width:44px;font-size:11px;border:1px solid #cbd5e1;border-radius:4px;padding:3px;text-align:center">
+        <span style="font-size:10px;color:#64748b">mm</span>
+      </div>
+
+      <!-- Socket preview disclaimer banner -->
+      <div id="socket-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(136,187,255,0.9);border:1px solid #93c5fd;border-radius:6px;padding:5px 12px;font-size:10px;color:#1e3a5f;white-space:nowrap;z-index:10">
+        Uniform offset only — not a clinical socket. Rectifications (relief/compression) not applied.
+      </div>
+
       <!-- Snap node colour legend (bottom-left, shown when overlay is active) -->
       <div id="snap-legend">
         <div class="legend-title">Snap Nodes</div>
@@ -894,7 +924,19 @@
       <div class="stat-card" id="vol-card" style="display:none">
         <div class="stat-label">Reconstructed Volume <i class="info-icon" data-tip="Computed using the divergence theorem on the closed watertight mesh — the same algorithm used by 3D Slicer and Mimics medical imaging software. Clinically used to track limb maturation post-amputation; significant volume reduction in the first 6 months is normal.">i</i></div>
         <div class="stat-value"><span id="vol-value">—</span><span class="stat-unit">cm³</span></div>
-        <div class="stat-note">Normal range: 1500–3000 cm³</div>
+        <div class="stat-note"></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#475569">
+          <span>Target range:</span>
+          <input id="vol-range-min" type="number" placeholder="min" style="width:52px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px">
+          <span>–</span>
+          <input id="vol-range-max" type="number" placeholder="max" style="width:52px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px">
+          <span>cm³</span>
+        </div>
+      </div>
+      <!-- Manifold check row -->
+      <div class="stat-card" id="manifold-row" style="display:none;padding:8px 12px">
+        <div class="stat-label">Mesh Integrity</div>
+        <div id="manifold-value" style="font-size:13px;font-weight:600;margin-top:2px">—</div>
       </div>
       <div id="circ-section" style="display:none">
         <div class="section-label" style="margin-bottom:6px">Per-Band Measurements</div>
@@ -925,46 +967,41 @@
 
 // Snap-lock grid: each index unit = 5mm of radial distance
 const MM_PER_INDEX = 5;
+const TOOTH_PITCH_MM = 5;  // alias used by N-rail logic
 
 // Number of interpolated points around each cross-section ring
 const RING_POINTS = 360;
 
-// Angular positions of the four snap nodes, in degrees
-const SNAP_ANGLES_DEG = [0, 90, 180, 270];
+// Configurable rail count: 4 | 6 | 8 | 12 | 16 (default 8)
+let RAIL_COUNT = 8;
 
-// ProstheticsTM manufacturing specification data
-// Source: 50th percentile adult male residual limb model
-// 12 bands at 20mm axial spacing, 4 rails at 0/90/180/270 deg, 5mm tooth pitch
-//
-// Snap-node indices = round(spec_mm / 5). Max quantisation error: +-2.5mm.
-// Spec is bilaterally symmetric (R0=R180, R90=R270) — baseline before patient asymmetry.
-//
-// Spec mm values and resulting indices:
-//   Band 1:  R0=41.28->8,  R90=34.98->7    Band 7:  R0=68.59->14, R90=58.12->12
-//   Band 2:  R0=50.60->10, R90=42.88->9    Band 8:  R0=69.53->14, R90=58.93->12
-//   Band 3:  R0=57.11->11, R90=48.40->10   Band 9:  R0=70.07->14, R90=59.38->12
-//   Band 4:  R0=61.68->12, R90=52.27->10   Band 10: R0=70.31->14, R90=59.59->12
-//   Band 5:  R0=64.88->13, R90=54.98->11   Band 11: R0=70.36->14, R90=59.63->12
-//   Band 6:  R0=67.09->13, R90=56.86->11   Band 12: R0=70.30->14, R90=59.57->12
-//
-// Expected reconstructed volume: ~2400 cm³
-// The 300-800 cm³ range cited in early requirements is incorrect for this anatomy.
-// Published data (Darter 2017; Sanders 2011; Geil 2002) reports 1500-3000 cm³
-// for full-length adult transtibial stumps. Max radius 70mm = 440mm circumference
-// is consistent with a large adult male. Volume range updated to 1500-3000 cm³.
-const DEMO_BANDS = [
-  { height_mm:   0, r0:  8, r90:  7, r180:  8, r270:  7 },  // 41/35mm, circ ~237mm
-  { height_mm:  20, r0: 10, r90:  9, r180: 10, r270:  9 },  // 50/45mm, circ ~298mm
-  { height_mm:  40, r0: 11, r90: 10, r180: 11, r270: 10 },  // 55/50mm, circ ~330mm
-  { height_mm:  60, r0: 12, r90: 10, r180: 12, r270: 10 },  // 60/50mm, circ ~346mm
-  { height_mm:  80, r0: 13, r90: 11, r180: 13, r270: 11 },  // 65/55mm, circ ~377mm
-  { height_mm: 100, r0: 13, r90: 11, r180: 13, r270: 11 },  // 65/55mm, circ ~377mm
-  { height_mm: 120, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
-  { height_mm: 140, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
-  { height_mm: 160, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
-  { height_mm: 180, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
-  { height_mm: 200, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
-  { height_mm: 220, r0: 14, r90: 12, r180: 14, r270: 12 },  // 70/60mm, circ ~408mm
+function getSnapAngles() {
+  return Array.from({ length: RAIL_COUNT }, (_, i) => i * 360 / RAIL_COUNT);
+}
+
+// Dynamic N-colour palette evenly distributed around HSL hue circle
+function getRailColors() {
+  return Array.from({ length: RAIL_COUNT }, (_, i) => {
+    const hue = Math.round(i * 360 / RAIL_COUNT);
+    const names = { 0:'Ant', 90:'Med', 180:'Post', 270:'Lat' };
+    const angle = i * 360 / RAIL_COUNT;
+    return { angle, label: names[angle] || `${angle}°`, hue };
+  });
+}
+
+// ProstheticsTM v2 manufacturing spec — 8 bands × 8 rails (0°,45°,90°,135°,180°,225°,270°,315°)
+// Source: Project_Prosthetics_Coordinate_Matrix_v2.csv
+// Snap-node indices = round(Radius_mm / 5); tooth pitch = 5mm.
+// Expected reconstructed volume: ~1,100 cm³ (100mm axial length, distal circ 240mm, prox ~408mm)
+const SAMPLE_LIMB_V2 = [
+  { height_mm:   0.0, radii: [8, 8, 7, 8, 8, 8, 7, 8] },   // distal: ~41mm ant, ~35mm med
+  { height_mm:  14.3, radii: [11,10, 9,10,11,10, 9,10] },
+  { height_mm:  28.6, radii: [12,11,11,11,12,11,11,11] },
+  { height_mm:  42.9, radii: [13,12,11,12,13,12,11,12] },
+  { height_mm:  57.1, radii: [14,12,12,12,14,12,12,12] },
+  { height_mm:  71.4, radii: [14,13,12,13,14,13,12,13] },
+  { height_mm:  85.7, radii: [14,13,12,13,14,13,12,13] },
+  { height_mm: 100.0, radii: [14,13,12,13,14,13,12,13] },   // proximal: ~70mm ant, ~60mm med
 ];
 
 // ── Floating tooltip (shared by all .info-icon elements) ────────
@@ -1003,6 +1040,10 @@ let meshObj       = null;   // current THREE.Mesh in scene
 let overlayGroup   = null;   // THREE.Group holding rings + spheres + labels
 let overlayVisible = false;  // whether overlay is currently shown
 
+// Socket offset preview state
+let socketMeshObj    = null;
+let socketVisible    = false;
+
 // Last successful reconstruction data (for export)
 let lastMeshData = null;
 let lastBands    = null;
@@ -1013,27 +1054,43 @@ let lastMetrics  = null;
 // SECTION 2: INPUT TABLE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Initialise the band input table with n empty rows.
- * Each row: Band index (display), Height(mm), R0°, R90°, R180°, R270°
- */
+function rebuildTableHeaders() {
+  const angles = getSnapAngles();
+  const thead  = document.getElementById('band-thead');
+  const names  = { 0:'Ant', 90:'Med', 180:'Post', 270:'Lat' };
+  const rCols  = angles.map(a => {
+    const lbl = names[a] ? `R${a}°<br><small style="font-weight:400;font-size:9px">${names[a]}</small>` : `R${a}°`;
+    return `<th>${lbl}</th>`;
+  }).join('');
+  thead.innerHTML = `<tr>
+    <th>Band</th>
+    <th>H(mm)</th>
+    ${rCols}
+  </tr>`;
+}
+
 function initInputTable(n) {
+  rebuildTableHeaders();
   const tbody = document.getElementById('band-body');
   tbody.innerHTML = '';
   for (let i = 0; i < n; i++) {
     tbody.appendChild(makeBandRow(i + 1));
   }
+  // Update rail count display
+  const disp = document.getElementById('rail-count-display');
+  if (disp) disp.textContent = RAIL_COUNT;
 }
 
 function makeBandRow(bandNum) {
+  const angles = getSnapAngles();
+  const rCells = angles.map(() =>
+    `<td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>`
+  ).join('');
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td>B${String(bandNum).padStart(2,'0')}</td>
     <td><input type="number" class="h-input" min="0" max="999" step="1" placeholder="0"></td>
-    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
-    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
-    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
-    <td><input type="number" class="r-input" min="1" max="99" step="1" placeholder="1"></td>
+    ${rCells}
   `;
   return tr;
 }
@@ -1058,55 +1115,52 @@ function renumberRows() {
   }
 }
 
-/**
- * Load demo data into the table.
- * Uses DEMO_BANDS which model a 250mm tibial residual limb.
- */
 function loadDemoData() {
-  initInputTable(DEMO_BANDS.length);
+  // Ensure rail count matches the sample (8 rails)
+  RAIL_COUNT = 8;
+  const sel = document.getElementById('rail-count');
+  if (sel) sel.value = '8';
+
+  initInputTable(SAMPLE_LIMB_V2.length);
   const rows = document.getElementById('band-body').rows;
-  DEMO_BANDS.forEach((b, i) => {
+  SAMPLE_LIMB_V2.forEach((b, i) => {
     const inputs = rows[i].querySelectorAll('input');
     inputs[0].value = b.height_mm;
-    inputs[1].value = b.r0;
-    inputs[2].value = b.r90;
-    inputs[3].value = b.r180;
-    inputs[4].value = b.r270;
+    b.radii.forEach((r, j) => { inputs[j + 1].value = r; });
   });
   hideError();
+
+  // Show sample badge
+  const badge = document.getElementById('sample-badge');
+  if (badge) badge.style.display = 'inline-flex';
 }
 
 /**
  * Read and validate the entire input table.
- * Returns array of band objects, or null on validation failure.
+ * Returns array of band objects with .radii[] array, or null on failure.
  */
 function readInputTable() {
-  const rows = document.getElementById('band-body').rows;
+  const rows  = document.getElementById('band-body').rows;
   const bands = [];
 
   for (let i = 0; i < rows.length; i++) {
     const inputs = rows[i].querySelectorAll('input');
-    // Clear previous error highlighting on this row
     inputs.forEach(inp => inp.classList.remove('input-error'));
 
     const h    = parseFloat(inputs[0].value);
-    const r0   = parseInt(inputs[1].value, 10);
-    const r90  = parseInt(inputs[2].value, 10);
-    const r180 = parseInt(inputs[3].value, 10);
-    const r270 = parseInt(inputs[4].value, 10);
-
     let rowValid = true;
 
-    // Validate height
     if (isNaN(h) || h < 0) {
       inputs[0].classList.add('input-error');
       rowValid = false;
     }
 
-    // Validate radial indices (minimum 1 = 5mm to avoid degenerate geometry)
-    [r0, r90, r180, r270].forEach((r, j) => {
+    const rInputs = Array.from(inputs).slice(1);
+    const radii   = rInputs.map(inp => parseInt(inp.value, 10));
+
+    radii.forEach((r, j) => {
       if (isNaN(r) || r < 1) {
-        inputs[j + 1].classList.add('input-error');
+        rInputs[j].classList.add('input-error');
         rowValid = false;
       }
     });
@@ -1116,13 +1170,12 @@ function readInputTable() {
       return null;
     }
 
-    bands.push({ height_mm: h, r0, r90, r180, r270 });
+    bands.push({ height_mm: h, radii });
   }
 
-  // Enforce strictly increasing heights
   for (let i = 1; i < bands.length; i++) {
     if (bands[i].height_mm <= bands[i - 1].height_mm) {
-      showError(`Height at band ${i + 1} (${bands[i].height_mm}mm) must be greater than band ${i} (${bands[i-1].height_mm}mm).`);
+      showError(`Height at band ${i + 1} (${bands[i].height_mm}mm) must exceed band ${i} (${bands[i-1].height_mm}mm).`);
       return null;
     }
   }
@@ -1160,84 +1213,83 @@ function polarToCartesian(r_mm, theta_deg) {
 }
 
 /**
- * Convert one measurement band's snap-node indices into 4 Cartesian control points.
- * The four nodes are at 0°, 90°, 180°, 270°.
- * Returns array of 4 { x, y } objects (in mm).
+ * Convert one measurement band's snap-node indices into N Cartesian control points.
+ * Works for any RAIL_COUNT (4, 6, 8, 12, 16).
+ * Returns array of N { x, y } objects (in mm).
  */
 function getControlPoints(band) {
-  const radii_mm = [band.r0, band.r90, band.r180, band.r270].map(idx => idx * MM_PER_INDEX);
-  return SNAP_ANGLES_DEG.map((theta, i) => polarToCartesian(radii_mm[i], theta));
+  const angles = getSnapAngles();
+  return angles.map((theta, i) => {
+    const r_mm = band.radii[i] * TOOTH_PITCH_MM;
+    return polarToCartesian(r_mm, theta);
+  });
 }
 
 /**
- * Evaluate one segment of a uniform Catmull-Rom spline.
+ * Linear interpolation in 2D using a parameterised t-domain [ta, tb].
+ * Used by the Barry-Goldman algorithm for centripetal Catmull-Rom.
+ */
+function lerp2(pa, pb, t, ta, tb) {
+  const s = (Math.abs(tb - ta) < 1e-10) ? 0 : (t - ta) / (tb - ta);
+  return { x: pa.x + (pb.x - pa.x) * s, y: pa.y + (pb.y - pa.y) * s };
+}
+
+/**
+ * Centripetal Catmull-Rom segment (alpha = 0.5) via Barry-Goldman algorithm.
  *
- * The uniform (alpha=0) Catmull-Rom basis matrix applied to control points
- * [p0, p1, p2, p3] produces a cubic curve through p1→p2:
+ * Unlike uniform CR (alpha=0), centripetal parameterisation spaces the knots
+ * proportional to sqrt(chord length), preventing cusps and self-intersections
+ * on asymmetric cross-sections — critical for real limb data.
  *
- *   q(t) = 0.5 × [ (2·P1)
- *                + (-P0 + P2)·t
- *                + (2·P0 - 5·P1 + 4·P2 - P3)·t²
- *                + (-P0 + 3·P1 - 3·P2 + P3)·t³ ]
- *
- * p0..p3: { x, y } — tangent anchors and curve endpoints
- * nPts: number of samples, at t = 0, 1/nPts, 2/nPts … (nPts-1)/nPts
- *       (t=1 is intentionally excluded to prevent duplication at segment joins)
- * Returns array of nPts { x, y } points.
+ * p0..p3: { x, y } control points; curve passes through p1→p2.
+ * nPts: samples at uniform increments of the [t1, t2] interval.
+ * Returns array of nPts { x, y }.
  */
 function catmullRomSegment(p0, p1, p2, p3, nPts) {
+  const chord = (a, b) => Math.pow(Math.hypot(b.x - a.x, b.y - a.y), 0.5); // alpha=0.5
+  const t0 = 0;
+  const t1 = t0 + chord(p0, p1);
+  const t2 = t1 + chord(p1, p2);
+  const t3 = t2 + chord(p2, p3);
+
   const pts = [];
   for (let j = 0; j < nPts; j++) {
-    const t  = j / nPts;
-    const t2 = t * t;
-    const t3 = t2 * t;
-
-    // Catmull-Rom basis coefficients
-    const c0 =  -t3 + 2*t2 - t;         // weight for p0
-    const c1 =   3*t3 - 5*t2 + 2;       // weight for p1  (×2 cancels the 0.5)
-    const c2 =  -3*t3 + 4*t2 + t;       // weight for p2
-    const c3 =   t3 - t2;               // weight for p3
-
-    // Each coordinate is computed independently
-    pts.push({
-      x: 0.5 * (c0*p0.x + c1*p1.x + c2*p2.x + c3*p3.x),
-      y: 0.5 * (c0*p0.y + c1*p1.y + c2*p2.y + c3*p3.y),
-    });
+    const t  = t1 + (t2 - t1) * j / nPts;
+    const A1 = lerp2(p0, p1, t, t0, t1);
+    const A2 = lerp2(p1, p2, t, t1, t2);
+    const A3 = lerp2(p2, p3, t, t2, t3);
+    const B1 = lerp2(A1, A2, t, t0, t2);
+    const B2 = lerp2(A2, A3, t, t1, t3);
+    pts.push(lerp2(B1, B2, t, t1, t2));
   }
   return pts;
 }
 
 /**
- * Build a smooth closed ring through exactly 4 control points using
- * Catmull-Rom splines. Produces totalPoints evenly distributed samples.
+ * Build a smooth closed ring through N control points using centripetal
+ * Catmull-Rom splines. Produces exactly 360 samples for any N.
  *
- * For a closed curve of N points, the ghost/phantom point construction is:
- *   Segment s: uses [P[(s-1+N)%N], P[s], P[(s+1)%N], P[(s+2)%N]]
+ * Segment s uses ghost points ctrl[(s+k+N)%N] for k = -1..2.
+ * ptsPerSeg = floor(360/N); final segment takes the remainder to reach exactly 360.
  *
- * With N=4 segments and totalPoints=360:
- *   - Each segment contributes 90 samples (360/4 = 90)
- *   - t runs from 0/90 to 89/90, never reaching 1.0
- *   - The curve closes perfectly: segment 3's implicit t=1 equals segment 0's t=0
- *
- * Returns array of totalPoints { x, y }.
+ * Returns array of 360 { x, y }.
  */
 function catmullRomClosedSpline(ctrl, totalPoints) {
-  const N    = ctrl.length;         // should be 4
-  const pps  = totalPoints / N;     // points per segment (90 for N=4, total=360)
-  const ring = [];
+  const N      = ctrl.length;
+  const base   = Math.floor(totalPoints / N);
+  const ring   = [];
 
   for (let s = 0; s < N; s++) {
-    // Ghost points for closed-curve continuity
-    const p0 = ctrl[(s - 1 + N) % N];   // point before segment start
-    const p1 = ctrl[s];                  // segment start (curve passes through this)
-    const p2 = ctrl[(s + 1) % N];        // segment end (curve passes through this)
-    const p3 = ctrl[(s + 2) % N];        // point after segment end
-
-    const segPts = catmullRomSegment(p0, p1, p2, p3, pps);
-    ring.push(...segPts);
+    const p0 = ctrl[(s - 1 + N) % N];
+    const p1 = ctrl[s];
+    const p2 = ctrl[(s + 1) % N];
+    const p3 = ctrl[(s + 2) % N];
+    // Last segment absorbs rounding remainder
+    const nPts = (s === N - 1) ? (totalPoints - ring.length) : base;
+    ring.push(...catmullRomSegment(p0, p1, p2, p3, nPts));
   }
 
-  return ring;  // length = totalPoints
+  return ring;  // exactly totalPoints points
 }
 
 /**
@@ -1601,9 +1653,18 @@ function renderMesh(meshData) {
 // showing exactly where the device locked at 0°/90°/180°/270°.
 // ═══════════════════════════════════════════════════════════════
 
-// Colors assigned to the four angular snap positions
-const SNAP_COLORS = [0xFF3333, 0x33CC44, 0x4488FF, 0xFFAA00];
-//                  0° ant    90° med   180° post  270° lat
+// Named colors for the 4 anatomical positions; others fall back to dynamic HSL
+const SNAP_COLOR_MAP = { 0: 0xFF3333, 90: 0x33CC44, 180: 0x4488FF, 270: 0xFFAA00 };
+
+function getSnapColorHex(angle) {
+  if (SNAP_COLOR_MAP[angle] !== undefined) return SNAP_COLOR_MAP[angle];
+  // Dynamic HSL for non-anatomical angles
+  const hue = Math.round(angle);
+  const r = Math.round((0.5 + 0.5 * Math.cos((hue - 0) * Math.PI / 180)) * 255);
+  const g = Math.round((0.5 + 0.5 * Math.cos((hue - 120) * Math.PI / 180)) * 255);
+  const b = Math.round((0.5 + 0.5 * Math.cos((hue - 240) * Math.PI / 180)) * 255);
+  return (Math.max(0,r) << 16) | (Math.max(0,g) << 8) | Math.max(0,b);
+}
 
 /**
  * Build the measurement overlay group and add it to the scene.
@@ -1641,12 +1702,12 @@ function buildOverlay(rings2D, bands) {
     overlayGroup.add(ringLine);
 
     // ── Snap node spheres ─────────────────────────────────────
-    // The four control points are the exact physical snap positions.
-    // Each gets a colour-coded sphere (radius 3.5mm, visible but not huge).
-    const ctrl = getControlPoints(band);       // [{x,y}] at 0°/90°/180°/270°
+    const ctrl    = getControlPoints(band);
+    const angles  = getSnapAngles();
     const sphereGeo = new THREE.SphereGeometry(3.5, 10, 7);
     ctrl.forEach((pt, si) => {
-      const mat    = new THREE.MeshBasicMaterial({ color: SNAP_COLORS[si], depthTest: false });
+      const color = getSnapColorHex(angles[si]);
+      const mat    = new THREE.MeshBasicMaterial({ color, depthTest: false });
       const sphere = new THREE.Mesh(sphereGeo, mat);
       sphere.position.set(pt.x, pt.y, z);
       sphere.renderOrder = 2;
@@ -1831,8 +1892,9 @@ function checkConvexity(ring2D) {
  * Returns { maxError_mm, errors: [e0, e90, e180, e270] }.
  */
 function computeResidualError(ring2D, band) {
-  const expectedR = [band.r0, band.r90, band.r180, band.r270].map(idx => idx * MM_PER_INDEX);
-  const errors = SNAP_ANGLES_DEG.map((theta, i) => {
+  const angles    = getSnapAngles();
+  const expectedR = band.radii.map(idx => idx * TOOTH_PITCH_MM);
+  const errors = angles.map((theta, i) => {
     const targetRad = theta * Math.PI / 180;
 
     // Find the ring point with angle closest to target
@@ -1859,22 +1921,39 @@ function computeResidualError(ring2D, band) {
 }
 
 /**
+ * Verify that the mesh is watertight and manifold.
+ * Every interior edge must appear in exactly 2 triangles.
+ * Returns { isManifold, edgeCount, badEdges }.
+ */
+function checkManifold(indices) {
+  const edgeMap = new Map();
+  for (let i = 0; i < indices.length; i += 3) {
+    const tri = [indices[i], indices[i+1], indices[i+2]];
+    for (let k = 0; k < 3; k++) {
+      const a = tri[k], b = tri[(k+1)%3];
+      const key = `${Math.min(a,b)}_${Math.max(a,b)}`;
+      edgeMap.set(key, (edgeMap.get(key) || 0) + 1);
+    }
+  }
+  const counts = [...edgeMap.values()];
+  const bad    = counts.filter(c => c !== 2).length;
+  return { isManifold: bad === 0, edgeCount: edgeMap.size, badEdges: bad };
+}
+
+/**
  * Run all validation metrics and update the stats panel DOM.
  */
 function runAllMetrics(meshData, bands) {
   const { vertices, indices, rings2D } = meshData;
 
-  // Volume (requires watertight mesh — end caps already added in generateMesh)
-  const volume = computeVolume(vertices, indices);
-
-  // Per-band metrics
+  const volume         = computeVolume(vertices, indices);
+  const manifold       = checkManifold(indices);
   const circumferences = rings2D.map(ring => computeCircumference(ring));
   const convexity      = rings2D.map(ring => checkConvexity(ring));
   const residuals      = rings2D.map((ring, i) => computeResidualError(ring, bands[i]));
 
-  const metrics = { volume, circumferences, convexity, residuals };
+  const metrics = { volume, manifold, circumferences, convexity, residuals };
 
-  // Update DOM
   updateStatsPanel(metrics, bands);
   updateValidationPanel(convexity, bands);
 
@@ -1882,20 +1961,44 @@ function runAllMetrics(meshData, bands) {
 }
 
 function updateStatsPanel(metrics, bands) {
-  // Volume card
   const volCard = document.getElementById('vol-card');
   volCard.style.display = 'block';
   document.getElementById('vol-value').textContent = metrics.volume.cm3.toFixed(1);
 
-  // Mark volume as out of clinical range
+  // Volume range check using editable min/max fields
   const volNote = volCard.querySelector('.stat-note');
-  const cm3 = metrics.volume.cm3;
-  if (cm3 < 1500 || cm3 > 3000) {
-    volNote.style.color = '#b45309';
-    volNote.textContent = `⚠ Outside normal range (1500–3000 cm³)`;
+  const cm3     = metrics.volume.cm3;
+  const rangeMinEl = document.getElementById('vol-range-min');
+  const rangeMaxEl = document.getElementById('vol-range-max');
+  const rMin = rangeMinEl ? parseFloat(rangeMinEl.value) : NaN;
+  const rMax = rangeMaxEl ? parseFloat(rangeMaxEl.value) : NaN;
+  if (!isNaN(rMin) && !isNaN(rMax)) {
+    if (cm3 < rMin || cm3 > rMax) {
+      volNote.style.color = '#b45309';
+      volNote.textContent = `⚠ Outside target range (${rMin}–${rMax} cm³)`;
+    } else {
+      volNote.style.color = '#16a34a';
+      volNote.textContent = `✓ Within target range (${rMin}–${rMax} cm³)`;
+    }
   } else {
-    volNote.style.color = '#16a34a';
-    volNote.textContent = `✓ Within normal range (1500–3000 cm³)`;
+    volNote.style.color = '#64748b';
+    volNote.textContent = 'Set target range below to check';
+  }
+
+  // Manifold check
+  const mfRow = document.getElementById('manifold-row');
+  if (mfRow) {
+    mfRow.style.display = 'block';
+    const mfVal = document.getElementById('manifold-value');
+    if (mfVal) {
+      if (metrics.manifold.isManifold) {
+        mfVal.textContent = '✓ Watertight';
+        mfVal.style.color = '#16a34a';
+      } else {
+        mfVal.textContent = `✗ ${metrics.manifold.badEdges} bad edges`;
+        mfVal.style.color = '#dc2626';
+      }
+    }
   }
 
   // Circumference table
@@ -1955,6 +2058,86 @@ function triggerDownload(blob, filename) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Export raw snap-node rail readings as a CSV (one row per band).
+ * Columns: height_mm, R0°, R45°, ... (N columns, one per rail).
+ * This is the "measured" dataset — separate from the 360-pt interpolated cloud.
+ */
+function exportRailCSV(bands) {
+  const angles = getSnapAngles();
+  const header = ['height_mm', ...angles.map(a => `R${a}deg`)].join(',');
+  const rows   = bands.map(b => [b.height_mm, ...b.radii].join(','));
+  const blob   = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+  triggerDownload(blob, `limb_rail_readings_${RAIL_COUNT}rail.csv`);
+}
+
+/**
+ * Parse an uploaded CSV file into bands array.
+ * Auto-detects Format A (snap indices) vs Format B (Radius_mm precomputed).
+ * Returns { bands, railCount } or throws with a descriptive message.
+ */
+function parseUploadedCSV(text) {
+  const lines   = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+
+  const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+
+  const hasRadiusMm = rawHeaders.some(h => h.toLowerCase() === 'radius_mm');
+  const hasSnapIdx  = rawHeaders.some(h => ['c_index','snap_index','c_idx'].includes(h.toLowerCase()));
+
+  if (!hasRadiusMm && !hasSnapIdx) {
+    throw new Error(`CSV format not recognised. Expected a column named "Radius_mm" (Format B) or "C_Index"/"Snap_Index" (Format A). Found: ${rawHeaders.join(', ')}`);
+  }
+
+  // Parse all data rows
+  const data = lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    const obj  = {};
+    rawHeaders.forEach((h, i) => { obj[h.toLowerCase()] = vals[i]; });
+    return obj;
+  });
+
+  // Group by height (h_mm), collect (angle → radius_mm)
+  const byHeight = new Map();
+  for (const row of data) {
+    const hKey   = hasRadiusMm ? row['h_mm'] : (row['h_mm'] || row['height_mm']);
+    const angle  = parseFloat(row['rail_angle'] || row['angle'] || 0);
+    const radius = hasRadiusMm
+      ? parseFloat(row['radius_mm'])
+      : parseFloat(row['c_index'] || row['snap_index'] || row['c_idx'] || 0) * TOOTH_PITCH_MM;
+
+    if (!byHeight.has(hKey)) byHeight.set(hKey, []);
+    byHeight.get(hKey).push({ angle, radius });
+  }
+
+  // Sort heights numerically, build bands array
+  const sortedHeights = [...byHeight.keys()].sort((a, b) => parseFloat(a) - parseFloat(b));
+  const bands = sortedHeights.map(hKey => {
+    const entries = byHeight.get(hKey).sort((a, b) => a.angle - b.angle);
+    const height_mm = parseFloat(hKey);
+    const radii = entries.map(e => Math.round(e.radius / TOOTH_PITCH_MM));
+    return { height_mm, radii };
+  });
+
+  // Determine rail count from first band
+  const railCount = bands[0].radii.length;
+  if (!bands.every(b => b.radii.length === railCount)) {
+    throw new Error('Inconsistent rail count across bands — all bands must have the same number of angles.');
+  }
+
+  // Validate radii
+  for (const b of bands) {
+    for (const r of b.radii) {
+      const rmm = r * TOOTH_PITCH_MM;
+      if (rmm < 15 || rmm > 120) {
+        console.warn(`Radius ${rmm}mm is outside plausible range (15–120mm) for height ${b.height_mm}mm.`);
+      }
+    }
+  }
+
+  return { bands, railCount, isFormatB: hasRadiusMm };
 }
 
 /**
@@ -2123,22 +2306,28 @@ function exportPDF(bands, metrics) {
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  const cm3 = metrics.volume.cm3.toFixed(1);
-  const inRange = metrics.volume.cm3 >= 1500 && metrics.volume.cm3 <= 3000;
-  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (Normal range: 1500–3000 cm³)`, margin, y);
+  const cm3      = metrics.volume.cm3.toFixed(1);
+  const rMinEl   = document.getElementById('vol-range-min');
+  const rMaxEl   = document.getElementById('vol-range-max');
+  const rMin     = rMinEl ? parseFloat(rMinEl.value) : NaN;
+  const rMax     = rMaxEl ? parseFloat(rMaxEl.value) : NaN;
+  const rangeStr = (!isNaN(rMin) && !isNaN(rMax)) ? `Target range: ${rMin}–${rMax} cm³` : 'No target range set';
+  const inRange  = (!isNaN(rMin) && !isNaN(rMax)) ? (metrics.volume.cm3 >= rMin && metrics.volume.cm3 <= rMax) : null;
+  const manifoldStr = metrics.manifold.isManifold ? 'Watertight ✓' : `Non-manifold (${metrics.manifold.badEdges} bad edges)`;
+  doc.text(`Reconstructed Limb Volume: ${cm3} cm³  (${rangeStr})  |  Mesh: ${manifoldStr}  |  Rails: ${RAIL_COUNT}`, margin, y);
 
-  if (!inRange) {
+  if (inRange === false) {
     doc.setTextColor(180, 83, 9);
-    doc.text('⚠ Volume outside normal clinical range', margin + contentW - 60, y);
+    doc.text('⚠ Volume outside target range', margin + contentW - 55, y);
     doc.setTextColor(26, 26, 46);
-  } else {
+  } else if (inRange === true) {
     doc.setTextColor(22, 163, 74);
-    doc.text('✓ Within normal range', margin + contentW - 45, y);
+    doc.text('✓ Within target range', margin + contentW - 45, y);
     doc.setTextColor(26, 26, 46);
   }
 
   y += 5;
-  doc.text(`Algorithm: Catmull-Rom closed spline (360 pts/cross-section), lofted triangle mesh, divergence theorem volume`, margin, y);
+  doc.text(`Algorithm: Centripetal Catmull-Rom closed spline (${RAIL_COUNT} rails, 360 pts/cross-section), lofted triangle mesh, divergence theorem volume`, margin, y);
   y += 10;
 
   // ── Band Measurement Table ────────────────────────────────────
@@ -2147,9 +2336,15 @@ function exportPDF(bands, metrics) {
   doc.text('Band-by-Band Measurements', margin, y);
   y += 6;
 
-  // Table headers
-  const colX = [margin, margin+14, margin+30, margin+48, margin+64, margin+80, margin+100, margin+122, margin+145, margin+162];
-  const headers = ['Band', 'H(mm)', 'R0°', 'R90°', 'R180°', 'R270°', 'Circumf.', 'Convex', 'Fit Err'];
+  // Table headers — dynamic N-rail columns
+  const angles    = getSnapAngles();
+  const rHdrs     = angles.map(a => `R${a}°`);
+  const headers   = ['Band', 'H(mm)', ...rHdrs, 'Circumf.', 'Convex', 'Fit Err'];
+  const fixedCols = [margin, margin+14];                  // Band, H
+  const rColW     = Math.min(18, Math.floor((contentW - 14 - 40) / (angles.length + 3)));
+  const rColX     = angles.map((_, i) => margin + 28 + i * rColW);
+  const afterR    = margin + 28 + angles.length * rColW;
+  const colX      = [...fixedCols, ...rColX, afterR, afterR+22, afterR+38];
 
   doc.setFillColor(241, 245, 249);
   doc.rect(margin, y - 4, contentW, 6, 'F');
@@ -2174,15 +2369,13 @@ function exportPDF(bands, metrics) {
     const circ  = metrics.circumferences[i].toFixed(1);
     const cvx   = metrics.convexity[i].isConvex ? 'Yes' : 'No';
     const err   = metrics.residuals[i].maxError_mm < 0.1 ? '~0' : metrics.residuals[i].maxError_mm.toFixed(2);
+    const rVals = b.radii.map(r => String(r * TOOTH_PITCH_MM));
 
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     const vals = [
       `B${String(i+1).padStart(2,'0')}`,
       String(b.height_mm),
-      String(b.r0 * MM_PER_INDEX),
-      String(b.r90 * MM_PER_INDEX),
-      String(b.r180 * MM_PER_INDEX),
-      String(b.r270 * MM_PER_INDEX),
+      ...rVals,
       `${circ} mm`,
       cvx,
       `${err} mm`,
@@ -2237,6 +2430,76 @@ function exportPDF(bands, metrics) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
+ * Build a uniform-offset socket preview mesh by displacing each vertex
+ * along its averaged normal by socketOffsetMm. Clearly labeled as a stub —
+ * no clinical rectifications applied.
+ */
+function buildSocketPreview(meshData, socketOffsetMm) {
+  if (socketMeshObj) {
+    scene.remove(socketMeshObj);
+    socketMeshObj.geometry.dispose();
+    socketMeshObj.material.dispose();
+    socketMeshObj = null;
+  }
+
+  const srcVerts = meshData.vertices;
+  const srcNorms = meshData.normals;
+  const n        = srcVerts.length / 3;
+  const offVerts = new Float32Array(srcVerts.length);
+
+  for (let i = 0; i < n; i++) {
+    offVerts[i*3]   = srcVerts[i*3]   + srcNorms[i*3]   * socketOffsetMm;
+    offVerts[i*3+1] = srcVerts[i*3+1] + srcNorms[i*3+1] * socketOffsetMm;
+    offVerts[i*3+2] = srcVerts[i*3+2] + srcNorms[i*3+2] * socketOffsetMm;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(offVerts, 3));
+  geo.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshPhongMaterial({
+    color:       0x88BBFF,
+    opacity:     0.35,
+    transparent: true,
+    side:        THREE.DoubleSide,
+    depthWrite:  false,
+  });
+
+  socketMeshObj = new THREE.Mesh(geo, mat);
+  socketMeshObj.renderOrder = 1;
+  scene.add(socketMeshObj);
+}
+
+function clearSocketPreview() {
+  if (socketMeshObj) {
+    scene.remove(socketMeshObj);
+    socketMeshObj.geometry.dispose();
+    socketMeshObj.material.dispose();
+    socketMeshObj = null;
+  }
+}
+
+function toggleSocketPreview() {
+  socketVisible = !socketVisible;
+  const btn     = document.getElementById('socket-toggle');
+  const banner  = document.getElementById('socket-banner');
+
+  if (socketVisible && lastMeshData) {
+    const offsetEl = document.getElementById('socket-offset-mm');
+    const offset   = offsetEl ? (parseFloat(offsetEl.value) || 4) : 4;
+    buildSocketPreview(lastMeshData, offset);
+    if (btn)    btn.classList.add('active');
+    if (banner) banner.style.display = 'block';
+  } else {
+    clearSocketPreview();
+    socketVisible = false;
+    if (btn)    btn.classList.remove('active');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+/**
  * Full reconstruction pipeline:
  *   readInputTable → generateMesh → renderMesh → runAllMetrics
  */
@@ -2244,19 +2507,25 @@ function reconstruct() {
   hideError();
 
   const bands = readInputTable();
-  if (!bands) return;  // validation failed — error already shown
+  if (!bands) return;
+
+  // Clear stale socket preview
+  clearSocketPreview();
+  socketVisible = false;
+  const sBtn    = document.getElementById('socket-toggle');
+  if (sBtn) sBtn.classList.remove('active');
+  const sBanner = document.getElementById('socket-banner');
+  if (sBanner) sBanner.style.display = 'none';
 
   try {
     const meshData = generateMesh(bands);
     renderMesh(meshData);
-    const metrics = runAllMetrics(meshData, bands);
+    const metrics  = runAllMetrics(meshData, bands);
 
-    // Store for export
     lastMeshData = meshData;
     lastBands    = bands;
     lastMetrics  = metrics;
 
-    // Rebuild overlay if it was visible before this reconstruction
     if (overlayVisible) buildOverlay(meshData.rings2D, bands);
   } catch (err) {
     showError('Reconstruction error: ' + err.message);
@@ -2266,19 +2535,43 @@ function reconstruct() {
 
 // ── Initialise everything on DOM ready ──────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Init input table with 10 empty rows
-  initInputTable(10);
-
-  // Init Three.js renderer into canvas wrapper
+  // Init Three.js first (needs canvas-wrapper in DOM)
   const wrapper = document.getElementById('canvas-wrapper');
   initThreeJS(wrapper);
+
+  // ── Rail count selector ────────────────────────────────────
+  const railSel = document.getElementById('rail-count');
+  if (railSel) {
+    railSel.value = String(RAIL_COUNT);
+    railSel.addEventListener('change', () => {
+      RAIL_COUNT = parseInt(railSel.value, 10);
+      const n = document.getElementById('band-body').rows.length || 8;
+      initInputTable(n);
+      hideError();
+    });
+  }
+
+  // ── Auto-load sample and reconstruct ──────────────────────
+  loadDemoData();
+  reconstruct();
+
+  // Run startup self-test (console only)
+  try {
+    const _t = generateMesh(SAMPLE_LIMB_V2);
+    const _m = checkManifold(_t.indices);
+    const _v = computeVolume(_t.vertices, _t.indices);
+    const _pass = _m.isManifold && Math.abs(_v.cm3 - 1100) / 1100 < 0.25;
+    console.log(`[ProstheticsTM] self-test ${_pass ? 'PASS' : 'FAIL'} — manifold:${_m.isManifold}, vol:${_v.cm3.toFixed(0)} cm³`);
+  } catch(e) {
+    console.warn('[ProstheticsTM] self-test error:', e.message);
+  }
 
   // ── Button event handlers ──────────────────────────────────
   document.getElementById('btn-reconstruct').addEventListener('click', reconstruct);
 
   document.getElementById('btn-demo').addEventListener('click', () => {
     loadDemoData();
-    hideError();
+    reconstruct();
   });
 
   document.getElementById('btn-add-band').addEventListener('click', () => {
@@ -2296,6 +2589,11 @@ document.addEventListener('DOMContentLoaded', () => {
     exportCSV(lastMeshData.rings3D);
   });
 
+  document.getElementById('btn-export-rail-csv').addEventListener('click', () => {
+    if (!lastBands) { showError('Reconstruct the limb first before exporting.'); return; }
+    exportRailCSV(lastBands);
+  });
+
   document.getElementById('btn-export-stl').addEventListener('click', () => {
     if (!lastMeshData) { showError('Reconstruct the limb first before exporting.'); return; }
     exportSTL(lastMeshData.vertices, lastMeshData.indices);
@@ -2306,8 +2604,66 @@ document.addEventListener('DOMContentLoaded', () => {
     exportPDF(lastBands, lastMetrics);
   });
 
+  // ── CSV Upload ─────────────────────────────────────────────
+  const csvInput = document.getElementById('csv-upload');
+  if (csvInput) {
+    csvInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const { bands, railCount, isFormatB } = parseUploadedCSV(evt.target.result);
+          // Show preview
+          const preview = document.getElementById('csv-preview');
+          if (preview) {
+            const rows = bands.slice(0, 3).map(b =>
+              `H=${b.height_mm}mm [${b.radii.join(', ')}]`
+            ).join(' | ');
+            preview.textContent = `Loaded: ${bands.length} bands × ${railCount} rails (Format ${isFormatB?'B':'A'}). Preview: ${rows}…`;
+            preview.style.display = 'block';
+            if (isFormatB) preview.textContent += ' — geometry between rails is interpolated, not measured.';
+          }
+          // Update rail count and populate table
+          RAIL_COUNT = railCount;
+          const rSel = document.getElementById('rail-count');
+          if (rSel) rSel.value = String(railCount);
+          initInputTable(bands.length);
+          const tableRows = document.getElementById('band-body').rows;
+          bands.forEach((b, i) => {
+            const inputs = tableRows[i].querySelectorAll('input');
+            inputs[0].value = b.height_mm;
+            b.radii.forEach((r, j) => { inputs[j+1].value = r; });
+          });
+          hideError();
+          reconstruct();
+          // Hide sample badge
+          const badge = document.getElementById('sample-badge');
+          if (badge) badge.style.display = 'none';
+        } catch (err) {
+          showError('CSV parse error: ' + err.message);
+          // Keep existing mesh — do not reconstruct
+        }
+        csvInput.value = '';  // allow re-upload of same file
+      };
+      reader.readAsText(file);
+    });
+  }
+
   // ── Overlay toggle ─────────────────────────────────────────
   document.getElementById('overlay-toggle').addEventListener('click', toggleOverlay);
+
+  // ── Socket preview ─────────────────────────────────────────
+  const socketBtn = document.getElementById('socket-toggle');
+  if (socketBtn) socketBtn.addEventListener('click', toggleSocketPreview);
+  const offsetInput = document.getElementById('socket-offset-mm');
+  if (offsetInput) {
+    offsetInput.addEventListener('change', () => {
+      if (socketVisible && lastMeshData) {
+        buildSocketPreview(lastMeshData, parseFloat(offsetInput.value) || 4);
+      }
+    });
+  }
 
   // ── Device schematic modal ─────────────────────────────────
   document.getElementById('btn-device-info').addEventListener('click', () => {
@@ -2318,6 +2674,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('device-modal-bg').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+
+  // ── Sample badge dismiss ───────────────────────────────────
+  const dismissBadge = document.getElementById('dismiss-badge');
+  if (dismissBadge) dismissBadge.addEventListener('click', () => {
+    const badge = document.getElementById('sample-badge');
+    if (badge) badge.style.display = 'none';
   });
 
   // ── Floating tooltips for all info icons ───────────────────
